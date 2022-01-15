@@ -1,0 +1,7 @@
+stim == 1.8.dev1641877520
+stimcirq == 1.8.dev1641877520
+pymatching == 0.6.0
+cirq-web == 0.13.1
+pytest == 6.2.5
+scipy
+matplotlib

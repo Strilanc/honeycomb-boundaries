@@ -1,0 +1,6 @@
+.idea/
+out/
+lib/
+**/__pycache__/
+**/.pytest_cache/
+**/internal_decoder.binary
