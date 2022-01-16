@@ -4,9 +4,9 @@ import math
 import pathlib
 import threading
 import time
-import numpy as np
-from typing import Optional, Tuple, Dict, List, Callable, Any, Union, Iterable, TypeVar
+from typing import Optional, Tuple, Dict, List, Callable, Union, Iterable, TypeVar
 
+import numpy as np
 import stim
 
 from .decoding import sample_decode_count_correct

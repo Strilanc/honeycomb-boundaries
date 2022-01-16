@@ -5,3 +5,4 @@ cirq-web == 0.13.1
 pytest == 6.2.5
 scipy
 matplotlib
+numpy

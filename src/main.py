@@ -7,8 +7,8 @@ from hcb.tools.analysis.plotting import plot_data
 
 
 def iter_problems(decoder: str) -> Iterator[DecodingProblem]:
-    for p in [0.008, 0.005, 0.002, 0.001, 5e-4, 2e-4]:
-        for d in [3, 5, 7, 9, 11]:
+    for p in [0.001, 0.002, 0.005, 0.01][::-1]:
+        for d in [3, 5, 7]:
             yield generate_surface_code_memory_problem(
                 noise=p,
                 distance=d,
@@ -24,10 +24,11 @@ def main():
     collect_simulated_experiment_data(
         iter_problems(decoder="internal"),
         out_path=data_file,
-        merge_mode="saturate",
-        start_batch_size=100,
-        max_shots=10**6,
-        max_errors=1000,
+        merge_mode="replace",
+        start_batch_size=2**8,
+        max_batch_size=2**18,
+        max_shots=100_000,
+        max_errors=100,
         num_threads=8,
     )
 

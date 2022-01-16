@@ -49,21 +49,28 @@ def sample_decode_count_correct(*,
         assert model_circuit.num_observables == num_obs
 
     # Sample some runs with known solutions.
-    det_obs_samples = circuit.compile_detector_sampler().sample(num_shots, append_observables=True)
+    bit_packed_det_obs_samples = circuit.compile_detector_sampler().sample_bit_packed(num_shots, append_observables=True)
     if num_obs == 0:
-        det_samples = det_obs_samples[:, :]
-        obs_samples = det_obs_samples[:, :0]
+        bit_packed_det_samples = bit_packed_det_obs_samples
+        obs_samples = np.zeros(shape=(bit_packed_det_samples.shape[0], 0), dtype=np.bool8)
     else:
-        det_samples = det_obs_samples[:, :-num_obs]
-        obs_samples = det_obs_samples[:, -num_obs:]
-    assert obs_samples.shape[0] == det_samples.shape[0]
+        num_det_bytes = (num_dets + 7) // 8
+        num_obs_bytes = (num_obs + 7) // 8
+        obs_samples = bit_packed_det_obs_samples[:, -num_obs_bytes:]
+        obs_samples = np.unpackbits(obs_samples, axis=1, count=num_obs_bytes * 8, bitorder='little')
+        obs_samples = obs_samples[:, num_dets % 8:][:, :num_obs]
+        bit_packed_det_samples = bit_packed_det_obs_samples[:, :num_det_bytes]
+        rem = num_dets % 8
+        if rem:
+            bit_packed_det_samples[:, -1] &= np.uint8((1 << rem) - 1)
+    assert obs_samples.shape[0] == bit_packed_det_samples.shape[0]
     assert obs_samples.shape[1] == num_obs
-    assert det_samples.shape[1] == num_dets
+    assert bit_packed_det_samples.shape[1] == (num_dets + 7) // 8
 
     # Have the decoder produce the solution from the symptoms.
     decode_method = decode_using_internal_decoder if use_internal_decoder else decode_using_pymatching
     predictions = decode_method(
-        det_samples=det_samples,
+        bit_packed_det_samples=bit_packed_det_samples,
         circuit=model_circuit,
         use_correlated_decoding=use_correlated_decoding,
     )
@@ -75,7 +82,7 @@ def sample_decode_count_correct(*,
 
 
 def decode_using_pymatching(circuit: stim.Circuit,
-                            det_samples: np.ndarray,
+                            bit_packed_det_samples: np.ndarray,
                             use_correlated_decoding: bool,
                             ) -> np.ndarray:
     """Collect statistics on how often logical errors occur when correcting using detections."""
@@ -85,14 +92,15 @@ def decode_using_pymatching(circuit: stim.Circuit,
     error_model = circuit.detector_error_model(decompose_errors=True)
     matching_graph = detector_error_model_to_pymatching_graph(error_model)
 
-    num_shots = det_samples.shape[0]
+    num_shots = bit_packed_det_samples.shape[0]
     num_obs = circuit.num_observables
     num_dets = circuit.num_detectors
-    assert det_samples.shape[1] == num_dets
+    assert bit_packed_det_samples.shape[1] == (num_dets + 7) // 8
 
     predictions = np.zeros(shape=(num_shots, num_obs), dtype=np.bool8)
     for k in range(num_shots):
-        expanded_det = np.resize(det_samples[k], num_dets + 1)
+        expanded_det = np.unpackbits(bit_packed_det_samples[k], count=num_dets, bitorder='little')
+        expanded_det = np.resize(expanded_det, num_dets + 1)
         expanded_det[-1] = 0
         predictions[k] = matching_graph.decode(expanded_det)
     return predictions
@@ -111,12 +119,12 @@ def repro_output_path() -> pathlib.Path:
 
 
 def decode_using_internal_decoder(circuit: stim.Circuit,
-                                  det_samples: np.ndarray,
+                                  bit_packed_det_samples: np.ndarray,
                                   use_correlated_decoding: bool,
                                   ) -> np.ndarray:
-    num_shots = det_samples.shape[0]
+    num_shots = bit_packed_det_samples.shape[0]
     num_obs = circuit.num_observables
-    assert det_samples.shape[1] == circuit.num_detectors
+    assert bit_packed_det_samples.shape[1] == (circuit.num_detectors + 7) // 8
     error_model = circuit.detector_error_model(decompose_errors=True)
 
     with tempfile.TemporaryDirectory() as d:
@@ -127,7 +135,7 @@ def decode_using_internal_decoder(circuit: stim.Circuit,
         with open(dem_file, "w") as f:
             print(error_model, file=f)
         with open(dets_file, "wb") as f:
-            np.packbits(det_samples, bitorder='little').tofile(f)
+            bit_packed_det_samples.tofile(f)
 
         path = internal_decoder_path()
         if path is None:
@@ -151,7 +159,7 @@ def decode_using_internal_decoder(circuit: stim.Circuit,
                 with open(repro_output_path() / "repro_model.dem", "w") as f2:
                     print(f.read(), file=f2)
             with open(dets_file) as f:
-                with open(repro_output_path() / "repro_dets.b8", "w") as f2:
+                with open(repro_output_path() / "repro_dets.b8", "wb") as f2:
                     print(f.read(), file=f2)
             with open(repro_output_path() / "repro_circuit.stim", "w") as f2:
                 print(circuit, file=f2)
