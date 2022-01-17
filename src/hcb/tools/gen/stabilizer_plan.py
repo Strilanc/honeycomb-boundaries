@@ -97,7 +97,7 @@ class StabilizerPlanElement:
                    noise=noise)
 
     def is_leaf(self) -> bool:
-        return sum(bool(e) for e in self.data_qubit_order) == 1
+        return sum(bool(e is not None) for e in self.data_qubit_order) == 1
 
     def data_coords_set(self) -> Set[complex]:
         return {e for e in self.data_qubit_order if e is not None}
@@ -330,7 +330,8 @@ class StabilizerPlan:
 
         # Draw each plan element as a polygon.
         clip_path_id = 0
-        BASE_COLORS = {"X": 'red', "Z": 'blue', "Y": 'green', None: "gray", '_': "black"}
+        BASE_COLORS = {"X": '#FFB0B0', "Z": '#B0B0FF', "Y": '#B0FFB0', None: "gray", '_': "black"}
+        STRONG_BASE_COLORS = {"X": 'red', "Z": 'blue', "Y": 'green', None: "gray", '_': "black"}
         OBS_COLORS = ['#8000FF', '#FF8000']
         post_lines = []
         for plan_i, plan in enumerate(plans):
@@ -339,6 +340,7 @@ class StabilizerPlan:
                 dq = sorted(e.data_coords_set(), key=lambda p: math.atan2(p.imag - c.imag, p.real - c.real))
                 common_basis = e.common_basis()
                 fill_color = BASE_COLORS[common_basis]
+                strong_fill_color = STRONG_BASE_COLORS[common_basis]
 
                 # Reduce degenerate triangle to a semi circle.
                 if len(dq) == 3:
@@ -355,8 +357,8 @@ class StabilizerPlan:
                     lines.append(f'<path '
                                  f'd="M{pt(plan_i, a)} '
                                  f'{pt(plan_i, b)}" '
-                                 f'stroke-width="10" '
-                                 f'stroke="{fill_color}" '
+                                 f'stroke-width="{abs(transform_dif(0.2))}" '
+                                 f'stroke="{strong_fill_color}" '
                                  f'fill="none" />')
                 elif len(dq) == 2:
                     a, b = dq
@@ -372,8 +374,8 @@ class StabilizerPlan:
                         lines.append(f'<path '
                                      f'd="M{pt(plan_i, a)} '
                                      f'{pt(plan_i, b)}" '
-                                     f'stroke-width="10" '
-                                     f'stroke="{fill_color}" '
+                                     f'stroke-width="{abs(transform_dif(0.2))}" '
+                                     f'stroke="{strong_fill_color}" '
                                      f'fill="none" />')
                     else:
                         lines.append(f'<path '
@@ -401,7 +403,7 @@ class StabilizerPlan:
                                          f'clip-path="url(#clipPath{clip_path_id})" '
                                          f'cx="{v.real}" '
                                          f'cy="{v.imag}" '
-                                         f'r="16" '
+                                         f'r="{abs(transform_dif(0.3))}" '
                                          f'fill="{BASE_COLORS[e.bases[k]]}" '
                                          f'stroke="none" />')
         lines += post_lines
@@ -447,22 +449,22 @@ class StabilizerPlan:
             all_coords = {q for e in p.elements for q in e.data_coords_set()}
             for q in all_coords:
                 xy = transform_pt(plan_i, q)
-                lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{5}" stroke="black" fill="black" />')
+                lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{abs(transform_dif(0.1))}" stroke="black" fill="black" />')
             all_coords = {e.measurement_qubit for e in p.elements if not e.measurement_qubit_is_artificial}
             for q in all_coords:
                 xy = transform_pt(plan_i, q)
-                lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{5}" stroke="black" fill="white" />')
+                lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{abs(transform_dif(0.1))}" stroke="black" fill="white" />')
 
         for plan_i, p in enumerate(plans):
             for obs_i, obs in enumerate(p.observables):
                 path_text = '<path d="M'
                 for q, b in zip(obs.data_qubit_order, obs.bases):
                     path_text += pt(plan_i, q + (1 + 1j)*0.1*obs_i) + ' '
-                path_text += f'" stroke-width="15" stroke="{OBS_COLORS[obs_i]}" opacity="0.9" fill="none" />'
+                path_text += f'" stroke-width="{abs(transform_dif(0.3))}" stroke="{OBS_COLORS[obs_i]}" opacity="0.9" fill="none" />'
                 lines.append(path_text)
         for plan_i, p in enumerate(plans):
             for obs_i, obs in enumerate(p.observables):
-                for q, b in zip(obs.data_qubit_order, obs.bases):
+                for q, b in zip(obs.data_qubit_order[1:-1], obs.bases[1:-1]):
                     c = transform_pt(plan_i, q + (1 + 1j)*0.1*obs_i)
                     r = abs(transform_dif(0.2 + 0j))
                     lines.append(tag_str(
@@ -470,7 +472,7 @@ class StabilizerPlan:
                         cx=c.real,
                         cy=c.imag,
                         r=r,
-                        fill=BASE_COLORS[b],
+                        fill=STRONG_BASE_COLORS[b],
                         stroke="black"))
 
         # Draw coordinates.

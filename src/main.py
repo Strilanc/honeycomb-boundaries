@@ -32,11 +32,11 @@ def main():
     collect_simulated_experiment_data(
         iter_problems(decoder="internal"),
         out_path=data_file,
-        merge_mode="saturate",
+        merge_mode="replace",
         start_batch_size=2**8,
         max_batch_size=2**18,
-        max_shots=100_000,
-        max_errors=1000,
+        max_shots=10_000,
+        max_errors=100,
         num_threads=8,
     )
 

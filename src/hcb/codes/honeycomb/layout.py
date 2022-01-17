@@ -62,6 +62,10 @@ class HoneycombHex:
     def __post_init__(self):
         assert (self.top_left.real + self.top_left.imag) % 2 == 0
 
+    def leaf_basis(self, m2e: Dict[complex, StabilizerPlanElement]) -> str:
+        result, = {m2e[m].common_basis() for m in self.measurement_qubits if m2e[m].is_leaf()}
+        return result
+
     @property
     def basis(self) -> str:
         return EDGE_BASIS_SEQUENCE[(2 + int(self.top_left.imag)) % 3]
@@ -104,8 +108,8 @@ class HoneycombLayout:
     def from_code_distance(distance: int, rounds: int, noise: float):
         assert distance % 2 == 0
         return HoneycombLayout(
-            data_width=distance + 2,
-            data_height=(distance // 2 + 1) * 3,
+            data_width=distance,
+            data_height=(distance // 2) * 3,
             rounds=rounds,
             noise=noise)
 
@@ -183,8 +187,8 @@ class HoneycombLayout:
                 continue
             # Cut along left boundary.
             if e.measurement_qubit.real * 3 < e.measurement_qubit.imag - 1:
-                # Handle corner case.
-                if e.measurement_qubit.imag < self.data_height - 2:
+                # # Handle corner case.
+                # if e.measurement_qubit.imag < self.data_height - 2:
                     continue
             # Cuts along right boundary.
             if (e.measurement_qubit.real - self.data_width) * 3 > e.measurement_qubit.imag:
@@ -192,21 +196,22 @@ class HoneycombLayout:
             kept_elements.append(e)
         elements = kept_elements
 
-        # Trim leaves.
-        hexes = HoneycombLayout.hexes_given_edge_plan_elements(elements)
-        data_qubits_in_hex = {
-            q for h in hexes for q in h.data_qubits
-        }
-        remaining_elements = []
+        data_qubit_measure_count = collections.Counter(
+            q
+            for e in elements
+            for q in e.data_qubit_order
+        )
+        truncated_elements = []
         for e in elements:
-            kept_data_qubits = tuple(q if q in data_qubits_in_hex else None for q in e.data_qubit_order)
-            if any(q is not None for q in kept_data_qubits):
-                remaining_elements.append(StabilizerPlanElement(
-                    bases=e.bases,
-                    measurement_qubit=e.measurement_qubit,
-                    data_qubit_order=kept_data_qubits,
-                ))
-        elements = remaining_elements
+            truncated_elements.append(StabilizerPlanElement(
+                bases=e.bases,
+                measurement_qubit=e.measurement_qubit,
+                data_qubit_order=tuple(
+                    q if data_qubit_measure_count[q] == 3 else None
+                    for q in e.data_qubit_order
+                ),
+            ))
+        elements = truncated_elements
 
         return StabilizerPlan(tuple(sorted(
             elements,
@@ -236,7 +241,7 @@ class HoneycombLayout:
 
     @functools.cached_property
     def vertical_observable_path(self) -> Tuple[complex, ...]:
-        x = (self.data_height // 6) * 2 - 1 + (self.data_height % 2)
+        x = (self.data_height // 6) * 2 + (self.data_height % 2)
         result = sorted([q for q in self.data_qubit_set if q.real == x], key=complex_key)
         result.append(result[-1] + 1j)
         result.insert(0, result[0] - 1j)
@@ -325,7 +330,9 @@ class HoneycombLayout:
         return frozenset(
             h
             for h in expanded_hexes
-            if h.measurement_qubits and h not in bulk_hexes and len(h.data_qubits) != 3
+            if h.measurement_qubits
+            and h not in bulk_hexes
+            and len(h.data_qubits) in [2, 4]
         )
 
     @functools.cached_property
@@ -461,9 +468,16 @@ class HoneycombLayout:
 
                 measured_bases += edge_basis
                 cmp = find_hex_comparison(measured_bases)
+                m2e = self.measure_to_element_dict
                 if cmp is not None:
                     hex_basis, comparisons = cmp
-                    for h in self.xyz_hex(hex_basis):
+
+                    used_hexes = [*self.xyz_hex(hex_basis)] + [
+                        h
+                        for h in self.boundary_hex_set
+                        if h.leaf_basis(m2e) == measured_bases[-1] and h.basis == hex_basis
+                    ]
+                    for h in used_hexes:
                         measurements = []
                         for c in comparisons:
                             for m in h.measurement_qubits:
@@ -474,48 +488,6 @@ class HoneycombLayout:
                             coords=[h.center.real, h.center.imag, 0],
                             out_circuit=circuit,
                         )
-                m2e = self.measure_to_element_dict
-
-                if len(measured_bases) >= 3 and measured_bases[-3] == measured_bases[-1]:
-                    for h in self.boundary_hex_set:
-                        measured_leaves = [m for m in h.measurement_qubits if m2e[m].is_leaf() and m2e[m].common_basis() == measured_bases[-1]]
-                        if len(h.data_qubits) == 2 and len(measured_leaves) == 2 and h.basis != 'X':
-                            a, b = measured_leaves
-                            tracker.append_detector(
-                                a, Prev(a),
-                                b, Prev(b),
-                                coords=[h.center.real, h.center.imag, 0],
-                                out_circuit=circuit,
-                            )
-
-                        if len(h.data_qubits) == 4 and len(measured_leaves) == 2 and h.basis != 'X':
-                            kept = [q for q in h.measurement_qubits if m2e[q].common_basis() != 'X']
-                            tracker.append_detector(
-                                *[q for q in kept],
-                                *[Prev(q) for q in kept],
-                                coords=[h.center.real, h.center.imag, 0],
-                                out_circuit=circuit,
-                            )
-
-                if len(measured_bases) >= 5 and measured_bases[-5] == measured_bases[-1]:
-                    for h in self.boundary_hex_set:
-                        measured_leaves = [m for m in h.measurement_qubits if m2e[m].is_leaf() and m2e[m].common_basis() == measured_bases[-1]]
-                        if len(h.data_qubits) == 2 and len(measured_leaves) == 2 and h.basis == 'X':
-                            tracker.append_detector(
-                                *h.measurement_qubits,
-                                *[Prev(q) for q in h.measurement_qubits],
-                                coords=[h.center.real, h.center.imag, 0],
-                                out_circuit=circuit,
-                            )
-
-                        if len(h.data_qubits) == 4 and len(measured_leaves) == 2 and h.basis == 'X':
-                            kept = [q for q in h.measurement_qubits]
-                            tracker.append_detector(
-                                *[q for q in kept],
-                                *[Prev(q) for q in kept],
-                                coords=[h.center.real, h.center.imag, 0],
-                                out_circuit=circuit,
-                            )
 
                 circuit.append("SHIFT_COORDS", [], [0, 0, 1])
 
@@ -559,9 +531,10 @@ def main():
         observable_plan = layout.observable_plan(step)
         plans.append(StabilizerPlan(
             elements=tuple([*hex_plan.elements, *edge_plan.elements]),
-            observables=observable_plan.observables))
+            observables=observable_plan.observables * 0))
     with open(out_dir / 'tmp.svg', 'w') as f:
         print(StabilizerPlan.svg(*plans, show_order=False), file=f)
+
     circuit = layout.circuit()
     with open(out_dir / 'tmp.html', 'w') as f:
         print(stim_circuit_html_viewer(circuit=circuit, width=500, height=500), file=f)
