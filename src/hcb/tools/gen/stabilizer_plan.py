@@ -68,6 +68,7 @@ class StabilizerPlanElement:
     bases: Tuple[str, ...]
     measurement_qubit: complex
     data_qubit_order: Tuple[Optional[complex], ...]
+    measurement_qubit_is_artificial: bool = False
 
     def __post_init__(self):
         assert isinstance(self.bases, tuple)
@@ -95,10 +96,15 @@ class StabilizerPlanElement:
                    q2i=q2i,
                    noise=noise)
 
+    def is_leaf(self) -> bool:
+        return sum(bool(e) for e in self.data_qubit_order) == 1
+
     def data_coords_set(self) -> Set[complex]:
         return {e for e in self.data_qubit_order if e is not None}
 
     def used_coords_set(self) -> Set[complex]:
+        if self.measurement_qubit_is_artificial:
+            return self.data_coords_set()
         return self.data_coords_set() | {self.measurement_qubit}
 
     def common_basis(self) -> Optional[str]:
@@ -236,7 +242,7 @@ class StabilizerPlan:
         return result
 
     def measure_coords_set(self) -> Set[complex]:
-        return {e.measurement_qubit for e in self.elements}
+        return {e.measurement_qubit for e in self.elements if not e.measurement_qubit_is_artificial}
 
     def sorted_data_coords(self) -> List[complex]:
         return sorted(self.data_coords_set(), key=complex_key)
@@ -333,6 +339,15 @@ class StabilizerPlan:
                 dq = sorted(e.data_coords_set(), key=lambda p: math.atan2(p.imag - c.imag, p.real - c.real))
                 common_basis = e.common_basis()
                 fill_color = BASE_COLORS[common_basis]
+
+                # Reduce degenerate triangle to a semi circle.
+                if len(dq) == 3:
+                    for k in range(3):
+                        if abs(dq[k-1] - (dq[k-2] + dq[k]) / 2) < 1e-4:
+                            dq = [dq[k-2], dq[k]]
+                            dq = sorted(dq, key=lambda p: math.atan2(p.imag - c.imag, p.real - c.real))
+                            break
+
 
                 if len(dq) == 1:
                     a, = dq
@@ -433,7 +448,7 @@ class StabilizerPlan:
             for q in all_coords:
                 xy = transform_pt(plan_i, q)
                 lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{5}" stroke="black" fill="black" />')
-            all_coords = {e.measurement_qubit for e in p.elements}
+            all_coords = {e.measurement_qubit for e in p.elements if not e.measurement_qubit_is_artificial}
             for q in all_coords:
                 xy = transform_pt(plan_i, q)
                 lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{5}" stroke="black" fill="white" />')
