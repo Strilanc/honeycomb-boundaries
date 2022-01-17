@@ -473,10 +473,18 @@ class HoneycombLayout:
                     for boundary, a, b, basis in self.boundary_pairs:
                         if boundary.common_basis() == 'X' and basis == measured_bases[-1]:
                             tracker.append_detector(
-                                a,
-                                Prev(a),
-                                b,
-                                Prev(b),
+                                a, Prev(a),
+                                b, Prev(b),
+                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
+                                out_circuit=circuit,
+                            )
+                    for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
+                        if boundary.common_basis() == measured_bases[-1] and self.measure_to_elements_dict[
+                            a1].common_basis() == 'X':
+                            tracker.append_detector(
+                                a2, Prev(a2),
+                                b2, Prev(b2),
+                                boundary.measurement_qubit, Prev(boundary.measurement_qubit),
                                 coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
                                 out_circuit=circuit,
                             )
@@ -484,54 +492,20 @@ class HoneycombLayout:
                     for boundary, a, b, basis in self.boundary_pairs:
                         if boundary.common_basis() != 'X' and basis == measured_bases[-1]:
                             tracker.append_detector(
-                                a,
-                                Prev(a),
-                                b,
-                                Prev(b),
+                                a, Prev(a),
+                                b, Prev(b),
                                 boundary.measurement_qubit,
                                 Prev(boundary.measurement_qubit),
                                 coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
                                 out_circuit=circuit,
                             )
-                if measured_bases.endswith("ZYXYZ"):
                     for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
-                        if boundary.common_basis() == 'Z' and self.measure_to_elements_dict[a1].common_basis() == 'Y':
+                        if boundary.common_basis() == measured_bases[-1] and self.measure_to_elements_dict[
+                            a1].common_basis() == measured_bases[-2]:
                             tracker.append_detector(
                                 a1, Prev(a1),
                                 a2, Prev(a2),
                                 b1, Prev(b1),
-                                b2, Prev(b2),
-                                boundary.measurement_qubit, Prev(boundary.measurement_qubit),
-                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
-                                out_circuit=circuit,
-                            )
-                if measured_bases.endswith("YZXZY"):
-                    for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
-                        if boundary.common_basis() == 'Y' and self.measure_to_elements_dict[a1].common_basis() == 'Z':
-                            tracker.append_detector(
-                                a1, Prev(a1),
-                                a2, Prev(a2),
-                                b1, Prev(b1),
-                                b2, Prev(b2),
-                                boundary.measurement_qubit, Prev(boundary.measurement_qubit),
-                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
-                                out_circuit=circuit,
-                            )
-                if measured_bases.endswith("YXY"):
-                    for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
-                        if boundary.common_basis() == 'Y' and self.measure_to_elements_dict[a1].common_basis() == 'X':
-                            tracker.append_detector(
-                                a2, Prev(a2),
-                                b2, Prev(b2),
-                                boundary.measurement_qubit, Prev(boundary.measurement_qubit),
-                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
-                                out_circuit=circuit,
-                            )
-                if measured_bases.endswith("ZXZ"):
-                    for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
-                        if boundary.common_basis() == 'Z' and self.measure_to_elements_dict[a1].common_basis() == 'X':
-                            tracker.append_detector(
-                                a2, Prev(a2),
                                 b2, Prev(b2),
                                 boundary.measurement_qubit, Prev(boundary.measurement_qubit),
                                 coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
@@ -578,7 +552,7 @@ def main():
     print("Circuit equivalents")
     for e in shortest_error_circuit:
         print("    " + e.replace('\n', '\n    '))
-    print(circuit)
+    print(f"graphlike code distance = {len(shortest_error)}")
 
     assert circuit.detector_error_model(decompose_errors=True) is not None
 
