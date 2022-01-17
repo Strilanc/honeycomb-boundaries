@@ -304,9 +304,18 @@ def _draw_mpp(instruction: stim.CircuitInstruction, *, out: _SvgState) -> None:
         tx /= len(chunk)
         ty /= len(chunk)
         color = rand_color()
+        if all(t.is_x_target for t in chunk):
+            color = 'red'
+            no_text = True
+        if all(t.is_y_target for t in chunk):
+            color = 'green'
+            no_text = True
+        if all(t.is_z_target for t in chunk):
+            color = 'blue'
+            no_text = True
         for t in chunk:
             x, y = q2i(t.value)
-            add("line", x1=x, x2=tx, y1=y, y2=ty, stroke=color)
+            add("line", x1=x, x2=tx, y1=y, y2=ty, stroke=color, stroke_width=8)
         for k, c in enumerate(chunk):
             if c.is_x_target:
                 text = "PX"
@@ -317,7 +326,7 @@ def _draw_mpp(instruction: stim.CircuitInstruction, *, out: _SvgState) -> None:
             else:
                 raise NotImplementedError(repr(c))
             x, y = q2i(c.value)
-            add_box(x * 0.9 + tx * 0.1, y * 0.9 + ty * 0.1, text)
+            add_box(x * 0.9 + tx * 0.1, y * 0.9 + ty * 0.1, text * (1 - int(no_text)), fill=color)
 
 
 def _draw_1q(instruction: stim.CircuitInstruction, *, out: _SvgState):

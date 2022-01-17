@@ -7,6 +7,7 @@ import stim
 
 from hcb.tools.gen.circuit_canvas import CircuitCanvas, Loc, LocOp, complex_key
 from hcb.tools.gen.measurement_tracker import MeasurementTracker, Prev
+from hcb.tools.gen.viewer import tag_str
 
 ALL_MEASURE_OPS = {"M", "MX", "MY", "MZ", "MR", "MRX", "MRY", "MRZ"}
 
@@ -64,11 +65,12 @@ class StabilizerPlanElement:
             a one moment delay until the next data qubit is xored into the measurement qubit.
     """
 
-    bases: List[str]
+    bases: Tuple[str, ...]
     measurement_qubit: complex
     data_qubit_order: Tuple[Optional[complex], ...]
 
     def __post_init__(self):
+        assert isinstance(self.bases, tuple)
         assert len(self.bases) == len(self.data_qubit_order)
 
     def with_clipped_data_qubits(self, clipped_data_qubits: AbstractSet[complex]) -> 'StabilizerPlanElement':
@@ -142,10 +144,13 @@ class StabilizerPlan:
     to measure their respective stabilizers).
     """
     elements: Tuple[StabilizerPlanElement, ...]
+    observables: Tuple[StabilizerPlanElement, ...] = ()
 
     def used_coords_set(self) -> Set[complex]:
         result = set()
         for e in self.elements:
+            result |= e.used_coords_set()
+        for e in self.observables:
             result |= e.used_coords_set()
         return result
 
@@ -276,9 +281,17 @@ class StabilizerPlan:
         min_i = min((e.imag for e in self.used_coords_set()), default=0)
         max_r = max((e.real for e in self.used_coords_set()), default=0)
         max_i = max((e.imag for e in self.used_coords_set()), default=0)
+        min_r -= 1
+        max_r += 1
+        min_i -= 1
+        max_i += 1
+        min_r = min(0, min_r)
+        min_i = min(0, min_i)
         return min_r + min_i * 1j, max_r + max_i * 1j
 
-    def svg(*plans: 'StabilizerPlan', canvas_height: int = 500, show_order: bool = True) -> str:
+    def svg(*plans: 'StabilizerPlan',
+            canvas_height: int = 500,
+            show_order: bool = True) -> str:
         """Returns a picture of the stabilizers measured by this plan.
 
         In the picture, black and red polygons correspond to X and Z stabilizers.
@@ -311,7 +324,8 @@ class StabilizerPlan:
 
         # Draw each plan element as a polygon.
         clip_path_id = 0
-        BASE_COLORS = {"X": 'black', "Z": 'red', "Y": 'magenta', None: "gray"}
+        BASE_COLORS = {"X": 'red', "Z": 'blue', "Y": 'green', None: "gray", '_': "black"}
+        OBS_COLORS = ['#8000FF', '#FF8000']
         post_lines = []
         for plan_i, plan in enumerate(plans):
             for e in plan.elements:
@@ -320,7 +334,16 @@ class StabilizerPlan:
                 common_basis = e.common_basis()
                 fill_color = BASE_COLORS[common_basis]
 
-                if len(dq) == 2:
+                if len(dq) == 1:
+                    a, = dq
+                    b = c
+                    lines.append(f'<path '
+                                 f'd="M{pt(plan_i, a)} '
+                                 f'{pt(plan_i, b)}" '
+                                 f'stroke-width="10" '
+                                 f'stroke="{fill_color}" '
+                                 f'fill="none" />')
+                elif len(dq) == 2:
                     a, b = dq
                     da = a - c
                     db = b - c
@@ -330,13 +353,21 @@ class StabilizerPlan:
                         a, b = b, a
 
                     c = (a + b) / 2
-                    lines.append(f'<path '
-                                 f'd="M{pt(plan_i, a)} '
-                                 f'a1,1 '
-                                 f'0 0,0 '
-                                 f'{dt(b - a)}" '
-                                 f'fill="{fill_color}" '
-                                 f'stroke="black" />')
+                    if abs(c - e.measurement_qubit) < 1e-4:
+                        lines.append(f'<path '
+                                     f'd="M{pt(plan_i, a)} '
+                                     f'{pt(plan_i, b)}" '
+                                     f'stroke-width="10" '
+                                     f'stroke="{fill_color}" '
+                                     f'fill="none" />')
+                    else:
+                        lines.append(f'<path '
+                                     f'd="M{pt(plan_i, a)} '
+                                     f'a1,1 '
+                                     f'0 0,0 '
+                                     f'{dt(b - a)}" '
+                                     f'fill="{fill_color}" '
+                                     f'stroke="black" />')
                 else:
                     x = f'<path d="M{pt(plan_i, dq[-1])}'
                     for q in dq:
@@ -396,6 +427,68 @@ class StabilizerPlan:
                     x = x.strip()
                     x += f'" fill="none" stroke="{arrow_color}" />'
                     lines.append(x)
+
+        for plan_i, p in enumerate(plans):
+            all_coords = {q for e in p.elements for q in e.data_coords_set()}
+            for q in all_coords:
+                xy = transform_pt(plan_i, q)
+                lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{5}" stroke="black" fill="black" />')
+            all_coords = {e.measurement_qubit for e in p.elements}
+            for q in all_coords:
+                xy = transform_pt(plan_i, q)
+                lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{5}" stroke="black" fill="white" />')
+
+        for plan_i, p in enumerate(plans):
+            for obs_i, obs in enumerate(p.observables):
+                path_text = '<path d="M'
+                for q, b in zip(obs.data_qubit_order, obs.bases):
+                    path_text += pt(plan_i, q + (1 + 1j)*0.1*obs_i) + ' '
+                path_text += f'" stroke-width="15" stroke="{OBS_COLORS[obs_i]}" opacity="0.9" fill="none" />'
+                lines.append(path_text)
+        for plan_i, p in enumerate(plans):
+            for obs_i, obs in enumerate(p.observables):
+                for q, b in zip(obs.data_qubit_order, obs.bases):
+                    c = transform_pt(plan_i, q + (1 + 1j)*0.1*obs_i)
+                    r = abs(transform_dif(0.2 + 0j))
+                    lines.append(tag_str(
+                        "circle",
+                        cx=c.real,
+                        cy=c.imag,
+                        r=r,
+                        fill=BASE_COLORS[b],
+                        stroke="black"))
+
+        # Draw coordinates.
+        all_used_coords = {q for p in plans for e in p.elements for q in e.used_coords_set()}
+        xs = {c.real for c in all_used_coords}
+        ys = {c.imag for c in all_used_coords}
+        for plan_i, p in enumerate(plans):
+            for x in xs:
+                if x != int(x):
+                    continue
+                c = transform_pt(plan_i, x + 0j)
+                lines.append(tag_str(
+                    "text",
+                     x=c.real,
+                     y=c.imag,
+                     fill="black",
+                     content=str(int(x)) if x == int(x) else str(x),
+                     text_anchor="middle",
+                     dominant_baseline="auto",
+                     font_size=12))
+            for y in ys:
+                if y != int(y):
+                    continue
+                c = transform_pt(plan_i, y*1j + 0)
+                lines.append(tag_str(
+                    "text",
+                     x=c.real,
+                     y=c.imag,
+                     fill="black",
+                     content=(str(int(y)) if y == int(y) else str(y)),
+                     text_anchor="start",
+                     alignment_baseline="middle",
+                     font_size=12))
 
         lines.append("</svg>")
         return "\n".join(lines)
