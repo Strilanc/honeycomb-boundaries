@@ -64,7 +64,7 @@ def m_around(center: complex,
         basis = list(basis)
         assert len(basis) == len(data_order)
     return StabilizerPlanElement(
-        bases=basis,
+        bases=tuple(basis),
         measurement_qubit=center,
         data_qubit_order=data_order)
 

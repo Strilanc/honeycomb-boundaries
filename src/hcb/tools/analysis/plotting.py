@@ -29,7 +29,9 @@ def plot_data(data: ProblemShotData,
               legend: bool = True,
               marker_offset=0,
               x_min: float = 1e-4,
-              x_max: float = 1e-2):
+              x_max: float = 1e-2,
+              y_max: float = 0.5,
+              y_min: float = 1e-6):
     if out_path is None and show is None and ax is None:
         show = True
 
@@ -86,7 +88,6 @@ def plot_data(data: ProblemShotData,
             k += 1
         assert p - int(p) < 1e-4
         return f"{int(p)}e-{k}"
-    y_min, y_max = 1e-6, 0.5
     ticks_x = [0.5] * (x_max >= 0.5) + [k*10**-p for k in [1] for p in range(1, 10) if x_min <= k*10**-p <= x_max]
     ticks_y = [0.5] * (y_max >= 0.5) + [k*10**-p for k in [1] for p in range(1, 10) if y_min <= k*10**-p <= y_max]
     ax.set_ylabel("Logical Error Rate")

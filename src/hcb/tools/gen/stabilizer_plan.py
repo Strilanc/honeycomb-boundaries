@@ -481,7 +481,7 @@ class StabilizerPlan:
             for x in xs:
                 if x != int(x):
                     continue
-                c = transform_pt(plan_i, x + 0j)
+                c = transform_pt(plan_i, x + boxes[plan_i][0].imag*1j)
                 lines.append(tag_str(
                     "text",
                      x=c.real,
@@ -494,7 +494,7 @@ class StabilizerPlan:
             for y in ys:
                 if y != int(y):
                     continue
-                c = transform_pt(plan_i, y*1j + 0)
+                c = transform_pt(plan_i, y*1j + boxes[plan_i][0].real)
                 lines.append(tag_str(
                     "text",
                      x=c.real,

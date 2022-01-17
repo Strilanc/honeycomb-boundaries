@@ -6,6 +6,7 @@ from typing import List, Tuple, Iterable, FrozenSet, Optional, Dict, AbstractSet
 
 import stim
 
+from hcb.tools.analysis.collecting import DecodingProblem, DecodingProblemDesc
 from hcb.tools.gen.circuit_canvas import complex_key
 from hcb.tools.gen.measurement_tracker import MeasurementTracker, Prev
 from hcb.tools.gen.stabilizer_plan import StabilizerPlan, StabilizerPlanElement
@@ -28,7 +29,7 @@ HEX_MEASURE_OFFSETS = (
     1 + 1.5j,
     0.5 + 2j,
 )
-EDGE_BASIS_SEQUENCE = 'XZY'
+EDGE_BASIS_SEQUENCE = 'YXZ'
 EDGE_MEASUREMENT_SEQUENCE = 'XYZXZY'
 
 
@@ -90,9 +91,23 @@ class HoneycombHex:
 
 
 class HoneycombLayout:
-    def __init__(self, *, data_width: int, data_height: int):
+    def __init__(self, *, data_width: int, data_height: int, rounds: int, noise: float):
         self.data_width = data_width
         self.data_height = data_height
+        self.rounds = rounds
+        self.noise = noise
+        assert self.data_width % 2 == 0
+        assert self.data_height % 3 == 0
+        assert self.data_width * 3 >= self.data_height
+
+    @staticmethod
+    def from_code_distance(distance: int, rounds: int, noise: float):
+        assert distance % 2 == 0
+        return HoneycombLayout(
+            data_width=distance + 2,
+            data_height=(distance // 2 + 1) * 3,
+            rounds=rounds,
+            noise=noise)
 
     @functools.cached_property
     def measurement_qubit_set(self) -> FrozenSet[complex]:
@@ -132,8 +147,8 @@ class HoneycombLayout:
     @functools.cached_property
     def edge_plan(self) -> StabilizerPlan:
         elements = []
-        for x in range(self.data_width):
-            for y in range(self.data_height):
+        for x in range(-2, self.data_width * 2 + 2):
+            for y in range(-2, self.data_height + 2):
                 # Vertical edge.
                 c = x + 1j * y
                 h_basis = EDGE_BASIS_SEQUENCE[int(y) % 3]
@@ -160,20 +175,20 @@ class HoneycombLayout:
         # Make boundary cuts.
         kept_elements = []
         for e in elements:
-            # Cuts along top boundary.
-            if e.measurement_qubit.imag <= 1:
+            # Cut along top boundary.
+            if e.measurement_qubit.imag < -0.5:
                 continue
             # Cuts along bottom boundary.
-            if e.measurement_qubit.imag >= self.data_height - 2:
+            if e.measurement_qubit.imag > self.data_height - 0.5:
                 continue
-            # Cuts along left boundary.
-            if e.measurement_qubit.imag + e.measurement_qubit.real * 3 <= 17:
-                continue
-            # Cuts along right boundary.
-            if e.measurement_qubit.imag + e.measurement_qubit.real * 3 >= 54:
+            # Cut along left boundary.
+            if e.measurement_qubit.real * 3 < e.measurement_qubit.imag - 1:
                 # Handle corner case.
-                if e.measurement_qubit.imag < self.data_height - 4:
+                if e.measurement_qubit.imag < self.data_height - 2:
                     continue
+            # Cuts along right boundary.
+            if (e.measurement_qubit.real - self.data_width) * 3 > e.measurement_qubit.imag:
+                continue
             kept_elements.append(e)
         elements = kept_elements
 
@@ -221,7 +236,8 @@ class HoneycombLayout:
 
     @functools.cached_property
     def vertical_observable_path(self) -> Tuple[complex, ...]:
-        result = sorted([q for q in self.data_qubit_set if q.real == 10], key=complex_key)
+        x = (self.data_height // 6) * 2 - 1 + (self.data_height % 2)
+        result = sorted([q for q in self.data_qubit_set if q.real == x], key=complex_key)
         result.append(result[-1] + 1j)
         result.insert(0, result[0] - 1j)
         return tuple(result)
@@ -229,7 +245,7 @@ class HoneycombLayout:
     @functools.cached_property
     def horizontal_observable_path(self) -> Tuple[complex, ...]:
         result = sorted(
-            [q for q in self.data_qubit_set if q.imag in [6, 7]],
+            [q for q in self.data_qubit_set if q.imag in [1, 2]],
             key=lambda q: (q.real, (q.imag + q.real) % 2 == 0)
         )
         result.append(result[-1] + 1)
@@ -412,21 +428,23 @@ class HoneycombLayout:
         if use_horizontal_obs:
             append_obs_measurement(self.horizontal_observable(1), 1)
 
-        for r in range(10):
+        for r in range(self.rounds):
             for edge_basis in EDGE_MEASUREMENT_SEQUENCE:
-                if r in [4, 5]:
-                    circuit.append("DEPOLARIZE1", [q2i[q] for q in self.data_qubit_set], 0.001)
+                noise = self.noise if r != 0 and r != self.rounds - 1 else 0
                 target = target_xyz[edge_basis]
                 added_measurements = []
                 for edge in self.xyz_edges(edge_basis).elements:
                     edge: StabilizerPlanElement
                     data_coords = edge.data_coords_set()
                     targets = []
+                    ts = []
                     for q in sorted(data_coords, key=complex_key):
                         targets.append(target(q2i[q]))
+                        ts.append(q2i[q])
                         targets.append(stim.target_combiner())
                     targets.pop()
-                    circuit.append("MPP", targets)
+                    circuit.append(f"DEPOLARIZE{len(ts)}", ts, noise)
+                    circuit.append("MPP", targets, noise)
                     added_measurements.append(edge.measurement_qubit)
                 tracker.add_measurements(*added_measurements)
                 if edge_basis != 'X':
@@ -512,10 +530,28 @@ class HoneycombLayout:
 
         return circuit
 
+    def to_decoding_problem(self, decoder: str) -> DecodingProblem:
+        return DecodingProblem(
+            circuit_maker=self.circuit,
+            desc=DecodingProblemDesc(
+                data_width=self.data_width,
+                data_height=self.data_height,
+                code_distance=min(self.data_width - 2, self.data_height // 3 * 2 - 2),
+                num_qubits=len(self.all_qubits_set),
+                rounds=self.rounds,
+                noise=self.noise,
+                circuit_style=f"bounded_honeycomb_memory",
+                preserved_observable="EPR",
+                decoder=decoder,
+            )
+        )
+
 
 def main():
     out_dir = pathlib.Path(__file__).parent.parent.parent.parent.parent / 'out'
-    layout = HoneycombLayout(data_width=24, data_height=16)
+    layout = HoneycombLayout.from_code_distance(distance=10,
+                                                rounds=10,
+                                                noise=0.001)
     edge_plan = layout.edge_plan
     hex_plan = layout.hex_plan
     plans = []
@@ -529,20 +565,20 @@ def main():
     circuit = layout.circuit()
     with open(out_dir / 'tmp.html', 'w') as f:
         print(stim_circuit_html_viewer(circuit=circuit, width=500, height=500), file=f)
-    error_model: stim.DetectorErrorModel = circuit.detector_error_model()
+    error_model: stim.DetectorErrorModel = circuit.detector_error_model(decompose_errors=True)
 
-    shortest_error = error_model.shortest_graphlike_error(ignore_ungraphlike_errors=True)
+    shortest_error = error_model.shortest_graphlike_error()
     print(f"graphlike code distance = {len(shortest_error)}")
     for e in shortest_error:
         print("    ", e)
-
-    shortest_error_circuit = circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True)
-    print("Circuit equivalents")
-    for e in shortest_error_circuit:
-        print("    " + e.replace('\n', '\n    '))
-    print(f"graphlike code distance = {len(shortest_error)}")
-
-    assert circuit.detector_error_model(decompose_errors=True) is not None
+    #
+    # shortest_error_circuit = circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True)
+    # print("Circuit equivalents")
+    # for e in shortest_error_circuit:
+    #     print("    " + e.replace('\n', '\n    '))
+    # print(f"graphlike code distance = {len(shortest_error)}")
+    #
+    # assert circuit.detector_error_model(decompose_errors=True) is not None
 
 
 if __name__ == '__main__':
