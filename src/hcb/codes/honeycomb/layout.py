@@ -44,12 +44,10 @@ def find_hex_comparison(previous_measurements: str) -> Optional[Tuple[str, Tuple
     n = len(previous_measurements)
     for k in range(n - 2)[::-1]:
         if set(previous_measurements[k:k+2]) == match:
-            return remainder, (
-                piece(n-1),
-                piece(n-2),
-                piece(k),
-                piece(k+1),
-            )
+            pieces = set()
+            for p in [piece(n-1), piece(n-2), piece(k), piece(k+1)]:
+                pieces ^= {p}
+            return remainder, tuple(sorted(pieces, key=lambda p: (p.v, p.offset)))
     return None
 
 
@@ -508,7 +506,7 @@ class HoneycombLayout:
             desc=DecodingProblemDesc(
                 data_width=self.data_width,
                 data_height=self.data_height,
-                code_distance=min(self.data_width - 2, self.data_height // 3 * 2 - 2),
+                code_distance=min(self.data_width, self.data_height // 3 * 2),
                 num_qubits=len(self.all_qubits_set),
                 rounds=self.rounds,
                 noise=self.noise,
@@ -521,7 +519,7 @@ class HoneycombLayout:
 
 def main():
     out_dir = pathlib.Path(__file__).parent.parent.parent.parent.parent / 'out'
-    layout = HoneycombLayout.from_code_distance(distance=10,
+    layout = HoneycombLayout.from_code_distance(distance=6,
                                                 rounds=10,
                                                 noise=0.001)
     edge_plan = layout.edge_plan
@@ -531,7 +529,7 @@ def main():
         observable_plan = layout.observable_plan(step)
         plans.append(StabilizerPlan(
             elements=tuple([*hex_plan.elements, *edge_plan.elements]),
-            observables=observable_plan.observables * 0))
+            observables=observable_plan.observables))
     with open(out_dir / 'tmp.svg', 'w') as f:
         print(StabilizerPlan.svg(*plans, show_order=False), file=f)
 
@@ -544,14 +542,12 @@ def main():
     print(f"graphlike code distance = {len(shortest_error)}")
     for e in shortest_error:
         print("    ", e)
-    #
+
     # shortest_error_circuit = circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True)
     # print("Circuit equivalents")
     # for e in shortest_error_circuit:
     #     print("    " + e.replace('\n', '\n    '))
     # print(f"graphlike code distance = {len(shortest_error)}")
-    #
-    # assert circuit.detector_error_model(decompose_errors=True) is not None
 
 
 if __name__ == '__main__':

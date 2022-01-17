@@ -55,7 +55,7 @@ def sample_decode_count_correct(*,
         obs_samples = np.zeros(shape=(bit_packed_det_samples.shape[0], 0), dtype=np.bool8)
     else:
         num_det_bytes = (num_dets + 7) // 8
-        num_obs_bytes = (num_obs + 7) // 8
+        num_obs_bytes = (num_dets % 8 + num_obs + 7) // 8
         obs_samples = bit_packed_det_obs_samples[:, -num_obs_bytes:]
         obs_samples = np.unpackbits(obs_samples, axis=1, count=num_obs_bytes * 8, bitorder='little')
         obs_samples = obs_samples[:, num_dets % 8:][:, :num_obs]

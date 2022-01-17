@@ -21,6 +21,17 @@ class Prev(Generic[T]):
             self.v = v
             self.offset = offset
 
+    def __eq__(self, other):
+        if not isinstance(other, Prev):
+            return NotImplemented
+        return self.v == other.v and self.offset == other.offset
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        return hash((self.v, self.offset))
+
     def __add__(self, other: Any) -> 'Prev[Any]':
         return Prev(self.v + other, self.offset)
 

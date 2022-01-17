@@ -71,7 +71,7 @@ def plot_data(data: ProblemShotData,
             x_bounds.append(noise)
             ys_low.append(cor(low))
             ys_high.append(cor(high))
-        label = f"{key.circuit_style} d={key.code_distance}"
+        label = f"{key.circuit_style} {key.data_width}x{key.data_height}"
         ax.plot(xs, ys, label=label, marker=markers[order + marker_offset], zorder=100 - order, color=colors[order + marker_offset])
         ax.fill_between(x_bounds, ys_low, ys_high, alpha=0.3, color=colors[order + marker_offset])
         order += 1
