@@ -2,7 +2,7 @@ import collections
 import dataclasses
 import functools
 import pathlib
-from typing import List, Tuple, Iterable, FrozenSet
+from typing import List, Tuple, Iterable, FrozenSet, Optional, Dict
 
 import stim
 
@@ -29,6 +29,27 @@ HEX_MEASURE_OFFSETS = (
     0.5 + 2j,
 )
 EDGE_BASIS_SEQUENCE = 'XZY'
+EDGE_MEASUREMENT_SEQUENCE = 'XYZXZY'
+
+
+def find_hex_comparison(previous_measurements: str) -> Optional[Tuple[str, Tuple[Prev, ...]]]:
+    if len(previous_measurements) < 2:
+        return None
+    def piece(pos: int) -> Prev:
+        char = previous_measurements[pos]
+        return Prev(char, offset=sum(c == char for c in previous_measurements[pos + 1:]))
+    match = set(previous_measurements[-2:])
+    remainder, = set('XYZ') - match
+    n = len(previous_measurements)
+    for k in range(n - 2)[::-1]:
+        if set(previous_measurements[k:k+2]) == match:
+            return remainder, (
+                piece(n-1),
+                piece(n-2),
+                piece(k),
+                piece(k+1),
+            )
+    return None
 
 
 @dataclasses.dataclass
@@ -58,6 +79,91 @@ class HoneycombLayout:
     def __init__(self, *, data_width: int, data_height: int):
         self.data_width = data_width
         self.data_height = data_height
+
+    @functools.cached_property
+    def boundary_pairs(self) -> Tuple[Tuple[StabilizerPlanElement, complex, complex, str], ...]:
+        result: List[Tuple[StabilizerPlanElement, complex, complex, str]] = []
+
+        d = self.leaf_data_to_leaf_element_dict
+        for e in self.edge_plan.elements:
+            if all(q in d for q in e.data_qubit_order):
+                a, b = e.data_qubit_order
+                da = d[a]
+                db = d[b]
+                basis = da.common_basis()
+                assert db.common_basis() == basis and basis is not None
+                result.append((e, da.measurement_qubit, db.measurement_qubit, basis))
+        return tuple(sorted(result, key=lambda e: complex_key(e[0].measurement_qubit)))
+
+    def leaf_neighbor_of(self, edge: StabilizerPlanElement) -> Optional[StabilizerPlanElement]:
+        results = []
+        d = self.leaf_data_to_leaf_element_dict
+        for q in edge.data_coords_set():
+            if q in d:
+                results.append(d[q])
+        assert len(results) <= 1
+        if results:
+            return results[0]
+        return None
+
+    def leaf_neighbor_neighbor_of(self, q: complex) -> Optional[Tuple[StabilizerPlanElement, StabilizerPlanElement]]:
+        results: List[Tuple[StabilizerPlanElement, StabilizerPlanElement]] = []
+        for e2 in self.data_to_elements_dict[q]:
+            e3 = self.leaf_neighbor_of(e2)
+            if e3 is not None:
+                results.append((e2, e3))
+        assert len(results) <= 1
+        if results:
+            return results[0]
+        return None
+
+    @functools.cached_property
+    def boundary_squares(self) -> Tuple[Tuple[StabilizerPlanElement, Tuple[complex, complex], Tuple[complex, complex], str], ...]:
+        result: List[Tuple[StabilizerPlanElement, Tuple[complex, complex], Tuple[complex, complex], str]] = []
+
+        data_hex_counter = collections.Counter(
+            q
+            for h in self.hexes
+            for q in h.data_qubits()
+        )
+        for e in self.edge_plan.elements:
+            if len(e.data_coords_set()) == 2 and all(data_hex_counter[q] == 2 for q in e.data_coords_set()):
+                a, b = e.data_coords_set()
+                a1, a2 = self.leaf_neighbor_neighbor_of(a)
+                b1, b2 = self.leaf_neighbor_neighbor_of(b)
+                result.append((e, (a1.measurement_qubit, b1.measurement_qubit), (a2.measurement_qubit, b2.measurement_qubit), e.common_basis()))
+        return tuple(sorted(result, key=lambda e: complex_key(e[0].measurement_qubit)))
+
+    @functools.cached_property
+    def leaf_element_set(self) -> FrozenSet[StabilizerPlanElement]:
+        return frozenset(
+            e
+            for e in self.edge_plan.elements
+            if sum(q is not None for q in e.data_qubit_order) == 1
+        )
+
+    @functools.cached_property
+    def data_to_elements_dict(self) -> Dict[complex, Tuple[StabilizerPlanElement, ...]]:
+        result: Dict[complex, List[StabilizerPlanElement]] = {}
+        for e in self.edge_plan.elements:
+            for q in e.data_coords_set():
+                result.setdefault(q, []).append(e)
+        return {k: tuple(v) for k, v in result.items()}
+
+    @functools.cached_property
+    def measure_to_elements_dict(self) -> Dict[complex, StabilizerPlanElement]:
+        result: Dict[complex, StabilizerPlanElement] = {}
+        for e in self.edge_plan.elements:
+            result[e.measurement_qubit] = e
+        return result
+
+    @functools.cached_property
+    def leaf_data_to_leaf_element_dict(self) -> Dict[complex, StabilizerPlanElement]:
+        return {
+            q: e
+            for e in self.leaf_element_set
+            for q in e.data_coords_set()
+        }
 
     @functools.cached_property
     def edge_plan(self) -> StabilizerPlan:
@@ -160,12 +266,22 @@ class HoneycombLayout:
     @functools.cached_property
     def horizontal_observable_path(self) -> Tuple[complex, ...]:
         result = sorted(
-            [q for q in self.data_qubit_set if q.imag in [4, 5]],
+            [q for q in self.data_qubit_set if q.imag in [6, 7]],
             key=lambda q: (q.real, (q.imag + q.real) % 2 == 0)
         )
         result.append(result[-1] + 1)
         result.insert(0, result[0] - 1)
         return tuple(result)
+
+    @functools.cached_property
+    def vertical_observable_measurement_qubit_set(self) -> FrozenSet[complex]:
+        p = self.vertical_observable_path
+        return frozenset((p[k] + p[k + 1]) / 2 for k in range(len(p) - 1))
+
+    @functools.cached_property
+    def horizontal_observable_measurement_qubit_set(self) -> FrozenSet[complex]:
+        p = self.horizontal_observable_path
+        return frozenset((p[k] + p[k + 1]) / 2 for k in range(len(p) - 1))
 
     def vertical_observable(self, step: int) -> StabilizerPlanElement:
         data_qubits = self.vertical_observable_path
@@ -228,11 +344,30 @@ class HoneycombLayout:
     def z_edges(self) -> StabilizerPlan:
         return StabilizerPlan(tuple(e for e in self.edge_plan.elements if e.bases[0] == 'Z'))
 
+    @functools.cached_property
+    def x_measurement_qubits(self) -> FrozenSet[complex]:
+        return frozenset(e.measurement_qubit for e in self.x_edges.elements)
+
+    @functools.cached_property
+    def y_measurement_qubits(self) -> FrozenSet[complex]:
+        return frozenset(e.measurement_qubit for e in self.y_edges.elements)
+
+    @functools.cached_property
+    def z_measurement_qubits(self) -> FrozenSet[complex]:
+        return frozenset(e.measurement_qubit for e in self.z_edges.elements)
+
     def xyz_edges(self, basis: str) -> StabilizerPlan:
         return {
             'X': self.x_edges,
             'Y': self.y_edges,
             'Z': self.z_edges,
+        }[basis]
+
+    def xyz_measurement_qubits(self, basis: str) -> FrozenSet[complex]:
+        return {
+            'X': self.x_measurement_qubits,
+            'Y': self.y_measurement_qubits,
+            'Z': self.z_measurement_qubits,
         }[basis]
 
     @functools.cached_property
@@ -257,8 +392,11 @@ class HoneycombLayout:
     def circuit(self) -> stim.Circuit:
         circuit = stim.Circuit()
         q2i = {q: i for i, q in enumerate(sorted(self.edge_plan.used_coords_set(), key=complex_key))}
+        epr_ancilla = -2
+        assert epr_ancilla not in q2i
+        q2i[epr_ancilla] = len(q2i)
         for q, i in q2i.items():
-            circuit.append_operation("QUBIT_COORDS", [i], [q.real, q.imag])
+            circuit.append("QUBIT_COORDS", i, [q.real, q.imag])
 
         target_xyz = {
             'X': stim.target_x,
@@ -266,10 +404,33 @@ class HoneycombLayout:
             'Z': stim.target_z,
         }
         tracker = MeasurementTracker()
+        measured_bases = ''
+
+        def append_obs_measurement(obs: StabilizerPlanElement, index: int):
+            targets = []
+            for p, q in zip(obs.bases, obs.data_qubit_order):
+                assert p in '_XYZ'
+                if p != '_':
+                    targets.append(target_xyz[p](q2i[q]))
+                    targets.append(stim.target_combiner())
+            targets.append(target_xyz['XZ'[index]](q2i[epr_ancilla]))
+            circuit.append('MPP', targets)
+            circuit.append('OBSERVABLE_INCLUDE', stim.target_rec(-1), index)
+            circuit.append("TICK")
+
+        use_vertical_obs = True
+        use_horizontal_obs = True
+        if use_vertical_obs:
+            append_obs_measurement(self.vertical_observable(1), 0)
+        if use_horizontal_obs:
+            append_obs_measurement(self.horizontal_observable(1), 1)
+
         for r in range(10):
-            for k in range(3):
-                edge_basis = EDGE_BASIS_SEQUENCE[k]
+            for edge_basis in EDGE_MEASUREMENT_SEQUENCE:
+                if r in [4, 5]:
+                    circuit.append("DEPOLARIZE1", [q2i[q] for q in self.data_qubit_set], 0.001)
                 target = target_xyz[edge_basis]
+                added_measurements = []
                 for edge in self.xyz_edges(edge_basis).elements:
                     edge: StabilizerPlanElement
                     data_coords = edge.data_coords_set()
@@ -278,21 +439,115 @@ class HoneycombLayout:
                         targets.append(target(q2i[q]))
                         targets.append(stim.target_combiner())
                     targets.pop()
-                    circuit.append_operation("MPP", targets)
-                    tracker.add_measurements(edge.measurement_qubit)
+                    circuit.append("MPP", targets)
+                    added_measurements.append(edge.measurement_qubit)
+                tracker.add_measurements(*added_measurements)
+                if edge_basis != 'X':
+                    if use_vertical_obs:
+                        circuit.append(
+                            "OBSERVABLE_INCLUDE",
+                            tracker.get_record_targets(*(set(added_measurements) & self.vertical_observable_measurement_qubit_set)),
+                            0)
+                    if use_horizontal_obs:
+                        circuit.append(
+                            "OBSERVABLE_INCLUDE",
+                            tracker.get_record_targets(*(set(added_measurements) & self.horizontal_observable_measurement_qubit_set)),
+                            1)
 
-                if r > 3:
-                    hex_basis = EDGE_BASIS_SEQUENCE[k - 2]
-                    if edge_basis == 'Y' and hex_basis == 'Z':
-                        for hex in self.xyz_hex(hex_basis):
+                measured_bases += edge_basis
+                cmp = find_hex_comparison(measured_bases)
+                if cmp is not None:
+                    hex_basis, comparisons = cmp
+                    for h in self.xyz_hex(hex_basis):
+                        measurements = []
+                        for c in comparisons:
+                            for m in h.measurement_qubits():
+                                if m in self.xyz_measurement_qubits(c.v):
+                                    measurements.append(Prev(m, offset=c.offset))
+                        tracker.append_detector(
+                            *measurements,
+                            coords=[h.center.real, h.center.imag, 0],
+                            out_circuit=circuit,
+                        )
+                if len(measured_bases) >= 3 and measured_bases[-3] == measured_bases[-1]:
+                    for boundary, a, b, basis in self.boundary_pairs:
+                        if boundary.common_basis() == 'X' and basis == measured_bases[-1]:
                             tracker.append_detector(
-                                *hex.measurement_qubits(),
-                                *[Prev(e) for e in hex.measurement_qubits()],
-                                coords=[hex.center.real, hex.center.imag],
-                                out_circuit = circuit,
+                                a,
+                                Prev(a),
+                                b,
+                                Prev(b),
+                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
+                                out_circuit=circuit,
                             )
+                if len(measured_bases) >= 5 and measured_bases[-5] == measured_bases[-1]:
+                    for boundary, a, b, basis in self.boundary_pairs:
+                        if boundary.common_basis() != 'X' and basis == measured_bases[-1]:
+                            tracker.append_detector(
+                                a,
+                                Prev(a),
+                                b,
+                                Prev(b),
+                                boundary.measurement_qubit,
+                                Prev(boundary.measurement_qubit),
+                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
+                                out_circuit=circuit,
+                            )
+                if measured_bases.endswith("ZYXYZ"):
+                    for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
+                        if boundary.common_basis() == 'Z' and self.measure_to_elements_dict[a1].common_basis() == 'Y':
+                            tracker.append_detector(
+                                a1, Prev(a1),
+                                a2, Prev(a2),
+                                b1, Prev(b1),
+                                b2, Prev(b2),
+                                boundary.measurement_qubit, Prev(boundary.measurement_qubit),
+                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
+                                out_circuit=circuit,
+                            )
+                if measured_bases.endswith("YZXZY"):
+                    for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
+                        if boundary.common_basis() == 'Y' and self.measure_to_elements_dict[a1].common_basis() == 'Z':
+                            tracker.append_detector(
+                                a1, Prev(a1),
+                                a2, Prev(a2),
+                                b1, Prev(b1),
+                                b2, Prev(b2),
+                                boundary.measurement_qubit, Prev(boundary.measurement_qubit),
+                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
+                                out_circuit=circuit,
+                            )
+                if measured_bases.endswith("YXY"):
+                    for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
+                        if boundary.common_basis() == 'Y' and self.measure_to_elements_dict[a1].common_basis() == 'X':
+                            tracker.append_detector(
+                                a2, Prev(a2),
+                                b2, Prev(b2),
+                                boundary.measurement_qubit, Prev(boundary.measurement_qubit),
+                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
+                                out_circuit=circuit,
+                            )
+                if measured_bases.endswith("ZXZ"):
+                    for boundary, (a1, b1), (a2, b2), basis in self.boundary_squares:
+                        if boundary.common_basis() == 'Z' and self.measure_to_elements_dict[a1].common_basis() == 'X':
+                            tracker.append_detector(
+                                a2, Prev(a2),
+                                b2, Prev(b2),
+                                boundary.measurement_qubit, Prev(boundary.measurement_qubit),
+                                coords=[boundary.measurement_qubit.real, boundary.measurement_qubit.imag, 0],
+                                out_circuit=circuit,
+                            )
+                circuit.append("SHIFT_COORDS", [], [0, 0, 1])
 
-                circuit.append_operation("TICK")
+
+                circuit.append("TICK")
+
+        if use_vertical_obs:
+            append_obs_measurement(self.vertical_observable(1), 0)
+        if use_horizontal_obs:
+            append_obs_measurement(self.horizontal_observable(1), 1)
+
+
         return circuit
 
 
@@ -312,6 +567,19 @@ def main():
     circuit = layout.circuit()
     with open(out_dir / 'tmp.html', 'w') as f:
         print(stim_circuit_html_viewer(circuit=circuit, width=500, height=500), file=f)
+    error_model: stim.DetectorErrorModel = circuit.detector_error_model()
+
+    shortest_error = error_model.shortest_graphlike_error(ignore_ungraphlike_errors=True)
+    print(f"graphlike code distance = {len(shortest_error)}")
+    for e in shortest_error:
+        print("    ", e)
+
+    shortest_error_circuit = circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True)
+    print("Circuit equivalents")
+    for e in shortest_error_circuit:
+        print("    " + e.replace('\n', '\n    '))
+    print(circuit)
+
     assert circuit.detector_error_model(decompose_errors=True) is not None
 
 

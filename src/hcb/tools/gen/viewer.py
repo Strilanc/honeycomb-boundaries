@@ -304,6 +304,7 @@ def _draw_mpp(instruction: stim.CircuitInstruction, *, out: _SvgState) -> None:
         tx /= len(chunk)
         ty /= len(chunk)
         color = rand_color()
+        no_text = False
         if all(t.is_x_target for t in chunk):
             color = 'red'
             no_text = True
@@ -395,7 +396,15 @@ def stim_circuit_html_viewer(circuit: stim.Circuit,
                 if target.is_relative_detector_id():
                     state.highlighted_detectors.add(target.val)
     except:
-        pass
+        try:
+            d: stim.DetectorErrorModel = circuit.detector_error_model(decompose_errors=False)
+            g = d.shortest_graphlike_error(ignore_ungraphlike_errors=True)
+            for instruction in g:
+                for target in instruction.targets_copy():
+                    if target.is_relative_detector_id():
+                        state.highlighted_detectors.add(target.val)
+        except:
+            pass
 
     _stim_circuit_to_svg_helper(circuit, state)
     all_pos = {pt for layer in state.layers for pt in layer.used_positions}
