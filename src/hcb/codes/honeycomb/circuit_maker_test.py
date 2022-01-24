@@ -11,18 +11,18 @@ from hcb.codes.honeycomb.layout import HoneycombLayout
     (14, 21, 10, 'SD6', 'H', 10, 10),
     (16, 24, 10, 'SD6', 'H', 11, 12),
 
-    (8, 12, 10, 'SD6', 'V', 5, 6),
-    (10, 15, 10, 'SD6', 'V', 6, 7),
-    (12, 18, 10, 'SD6', 'V', 8, 9),
-    (14, 21, 10, 'SD6', 'V', 9, 10),
-    (16, 24, 10, 'SD6', 'V', 11, 12),
+    (8, 12, 10, 'SD6', 'V', 5, 7),
+    (10, 15, 10, 'SD6', 'V', 7, 9),
+    (12, 18, 10, 'SD6', 'V', 9, 11),
+    (14, 21, 10, 'SD6', 'V', 11, 13),
+    (16, 24, 10, 'SD6', 'V', 13, 15),
 
-    (8, 12, 10, 'SD6', 'EPR', 5, 6),
-    (10, 15, 10, 'SD6', 'EPR', 7, 7),
-    (12, 18, 10, 'SD6', 'EPR', 8, 9),
-    (14, 21, 10, 'SD6', 'EPR', 10, 10),
-    (16, 24, 10, 'SD6', 'EPR', 11, 12),
-    (32, 48, 10, 'SD6', 'EPR', 23, 24),
+    (7, 12, 10, 'SD6', 'EPR', 6, 6),
+    (8, 15, 10, 'SD6', 'EPR', 6, 7),
+    (10, 18, 10, 'SD6', 'EPR', 8, 9),
+    (11, 21, 10, 'SD6', 'EPR', 10, 10),
+    (13, 24, 10, 'SD6', 'EPR', 12, 12),
+    (25, 48, 10, 'SD6', 'EPR', 24, 24),
 
     (8, 12, 10, 'EM3_v1', 'H', 4, 4),
     (8, 15, 10, 'EM3_v1', 'H', 5, 5),
@@ -57,11 +57,11 @@ def test_graphlike_code_distances(*,
 
     dem = circuit.detector_error_model(decompose_errors=False)
     err = dem.shortest_graphlike_error(ignore_ungraphlike_errors=True)
-    assert len(err) == ignored_graphlike_code_distance
+    assert len(err) == ignored_graphlike_code_distance, "ignored"
 
     dem = circuit.detector_error_model(decompose_errors=True)
     err = dem.shortest_graphlike_error(ignore_ungraphlike_errors=False)
-    assert len(err) == decomposed_graphlike_code_distance
+    assert len(err) == decomposed_graphlike_code_distance, "decomposed"
 
 
 def test_exact_circuit_EM3_v1_H():
@@ -70,7 +70,8 @@ def test_exact_circuit_EM3_v1_H():
                              rounds=100,
                              noise_level=0.125,
                              noisy_gate_set='EM3_v1',
-                             tested_observable='H')
+                             tested_observable='H',
+                             sheared=True)
     assert layout.to_problem(decoder='pymatching').noisy_circuit == stim.Circuit("""
         QUBIT_COORDS(0, 0) 0
         QUBIT_COORDS(1, 0) 1
@@ -92,6 +93,7 @@ def test_exact_circuit_EM3_v1_H():
         TICK
         DEPOLARIZE2(0.125) 2 3 5 6 8 9 10 11 0 1 4 7
         MPP(0.125) X2*X3 X5*X6 X8*X9 X10*X11 X0*X1 X4*X7
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
         DEPOLARIZE2(0.125) 1 2 7 8
@@ -101,15 +103,18 @@ def test_exact_circuit_EM3_v1_H():
         DETECTOR(2.5, 1, 0) rec[-7] rec[-2]
         DETECTOR(0.5, 1, 0) rec[-10] rec[-9] rec[-4]
         DETECTOR(3.5, 4, 0) rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE1(0.125) 0 1 9 11
         DEPOLARIZE2(0.125) 3 4 6 7 2 5 8 10
         MPP(0.125) Z0 Z1 Z3*Z4 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
         OBSERVABLE_INCLUDE(1) rec[-2]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE2(0.125) 2 3 5 6 8 9 10 11 0 1 4 7
         MPP(0.125) X2*X3 X5*X6 X8*X9 X10*X11 X0*X1 X4*X7
         DETECTOR(1.5, 2, 0) rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE1(0.125) 0 1 9 11
         DEPOLARIZE2(0.125) 3 4 6 7 2 5 8 10
@@ -118,6 +123,7 @@ def test_exact_circuit_EM3_v1_H():
         DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
         DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
         DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
         DEPOLARIZE2(0.125) 1 2 7 8
@@ -125,10 +131,12 @@ def test_exact_circuit_EM3_v1_H():
         OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
         DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
         DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         REPEAT 48 {
             DEPOLARIZE2(0.125) 2 3 5 6 8 9 10 11 0 1 4 7
             MPP(0.125) X2*X3 X5*X6 X8*X9 X10*X11 X0*X1 X4*X7
+            SHIFT_COORDS(0, 0, 1)
             TICK
             DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
             DEPOLARIZE2(0.125) 1 2 7 8
@@ -138,15 +146,18 @@ def test_exact_circuit_EM3_v1_H():
             DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
             DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
             DETECTOR(3.5, 4, 0) rec[-21] rec[-17] rec[-5] rec[-1]
+            SHIFT_COORDS(0, 0, 1)
             TICK
             DEPOLARIZE1(0.125) 0 1 9 11
             DEPOLARIZE2(0.125) 3 4 6 7 2 5 8 10
             MPP(0.125) Z0 Z1 Z3*Z4 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
             OBSERVABLE_INCLUDE(1) rec[-2]
+            SHIFT_COORDS(0, 0, 1)
             TICK
             DEPOLARIZE2(0.125) 2 3 5 6 8 9 10 11 0 1 4 7
             MPP(0.125) X2*X3 X5*X6 X8*X9 X10*X11 X0*X1 X4*X7
             DETECTOR(1.5, 2, 0) rec[-54] rec[-53] rec[-49] rec[-46] rec[-45] rec[-42] rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+            SHIFT_COORDS(0, 0, 1)
             TICK
             DEPOLARIZE1(0.125) 0 1 9 11
             DEPOLARIZE2(0.125) 3 4 6 7 2 5 8 10
@@ -155,6 +166,7 @@ def test_exact_circuit_EM3_v1_H():
             DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
             DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
             DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+            SHIFT_COORDS(0, 0, 1)
             TICK
             DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
             DEPOLARIZE2(0.125) 1 2 7 8
@@ -162,11 +174,13 @@ def test_exact_circuit_EM3_v1_H():
             OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
             DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
             DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+            SHIFT_COORDS(0, 0, 1)
             TICK
         }
         TICK
         DEPOLARIZE2(0.125) 2 3 5 6 8 9 10 11 0 1 4 7
         MPP(0.125) X2*X3 X5*X6 X8*X9 X10*X11 X0*X1 X4*X7
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
         DEPOLARIZE2(0.125) 1 2 7 8
@@ -176,15 +190,18 @@ def test_exact_circuit_EM3_v1_H():
         DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
         DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
         DETECTOR(3.5, 4, 0) rec[-21] rec[-17] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE1(0.125) 0 1 9 11
         DEPOLARIZE2(0.125) 3 4 6 7 2 5 8 10
         MPP(0.125) Z0 Z1 Z3*Z4 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
         OBSERVABLE_INCLUDE(1) rec[-2]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE2(0.125) 2 3 5 6 8 9 10 11 0 1 4 7
         MPP(0.125) X2*X3 X5*X6 X8*X9 X10*X11 X0*X1 X4*X7
         DETECTOR(1.5, 2, 0) rec[-54] rec[-53] rec[-49] rec[-46] rec[-45] rec[-42] rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE1(0.125) 0 1 9 11
         DEPOLARIZE2(0.125) 3 4 6 7 2 5 8 10
@@ -193,6 +210,7 @@ def test_exact_circuit_EM3_v1_H():
         DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
         DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
         DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
         DEPOLARIZE2(0.125) 1 2 7 8
@@ -200,6 +218,7 @@ def test_exact_circuit_EM3_v1_H():
         OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
         DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
         DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+        SHIFT_COORDS(0, 0, 1)
         TICK
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
         DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11
@@ -228,44 +247,45 @@ def test_exact_circuit_SD6_V():
                              rounds=100,
                              noise_level=0.125,
                              noisy_gate_set='SD6',
-                             tested_observable='V')
+                             tested_observable='V',
+                             sheared=False)
     assert layout.to_problem(decoder='pymatching').noisy_circuit == stim.Circuit("""
         QUBIT_COORDS(0, 0) 0
-        QUBIT_COORDS(1, 0) 1
-        QUBIT_COORDS(1, 1) 2
-        QUBIT_COORDS(1, 2) 3
-        QUBIT_COORDS(1, 3) 4
-        QUBIT_COORDS(2, 1) 5
-        QUBIT_COORDS(2, 2) 6
-        QUBIT_COORDS(2, 3) 7
-        QUBIT_COORDS(2, 4) 8
-        QUBIT_COORDS(2, 5) 9
-        QUBIT_COORDS(3, 4) 10
-        QUBIT_COORDS(3, 5) 11
+        QUBIT_COORDS(0, 4) 1
+        QUBIT_COORDS(0, 5) 2
+        QUBIT_COORDS(1, 0) 3
+        QUBIT_COORDS(1, 1) 4
+        QUBIT_COORDS(1, 2) 5
+        QUBIT_COORDS(1, 3) 6
+        QUBIT_COORDS(1, 4) 7
+        QUBIT_COORDS(1, 5) 8
+        QUBIT_COORDS(2, 1) 9
+        QUBIT_COORDS(2, 2) 10
+        QUBIT_COORDS(2, 3) 11
         QUBIT_COORDS(0, -0.5) 12
         QUBIT_COORDS(0, 0.5) 13
-        QUBIT_COORDS(1, -0.5) 14
-        QUBIT_COORDS(1, 0.5) 15
-        QUBIT_COORDS(1, 1.5) 16
-        QUBIT_COORDS(1, 2.5) 17
-        QUBIT_COORDS(1, 3.5) 18
-        QUBIT_COORDS(2, 0.5) 19
-        QUBIT_COORDS(2, 1.5) 20
-        QUBIT_COORDS(2, 2.5) 21
-        QUBIT_COORDS(2, 3.5) 22
-        QUBIT_COORDS(2, 4.5) 23
-        QUBIT_COORDS(2, 5.5) 24
-        QUBIT_COORDS(3, 3.5) 25
-        QUBIT_COORDS(3, 4.5) 26
-        QUBIT_COORDS(3, 5.5) 27
-        QUBIT_COORDS(0.5, 0) 28
-        QUBIT_COORDS(0.5, 2) 29
-        QUBIT_COORDS(1.5, 1) 30
-        QUBIT_COORDS(1.5, 3) 31
-        QUBIT_COORDS(1.5, 5) 32
-        QUBIT_COORDS(2.5, 2) 33
-        QUBIT_COORDS(2.5, 4) 34
-        QUBIT_COORDS(3.5, 5) 35
+        QUBIT_COORDS(0, 3.5) 14
+        QUBIT_COORDS(0, 4.5) 15
+        QUBIT_COORDS(0, 5.5) 16
+        QUBIT_COORDS(1, -0.5) 17
+        QUBIT_COORDS(1, 0.5) 18
+        QUBIT_COORDS(1, 1.5) 19
+        QUBIT_COORDS(1, 2.5) 20
+        QUBIT_COORDS(1, 3.5) 21
+        QUBIT_COORDS(1, 4.5) 22
+        QUBIT_COORDS(1, 5.5) 23
+        QUBIT_COORDS(2, 0.5) 24
+        QUBIT_COORDS(2, 1.5) 25
+        QUBIT_COORDS(2, 2.5) 26
+        QUBIT_COORDS(2, 3.5) 27
+        QUBIT_COORDS(-0.5, 5) 28
+        QUBIT_COORDS(0.5, 0) 29
+        QUBIT_COORDS(0.5, 2) 30
+        QUBIT_COORDS(0.5, 4) 31
+        QUBIT_COORDS(1.5, 1) 32
+        QUBIT_COORDS(1.5, 3) 33
+        QUBIT_COORDS(1.5, 5) 34
+        QUBIT_COORDS(2.5, 2) 35
         R 0 1 2 3 4 5 6 7 8 9 10 11
         X_ERROR(0.125) 0 1 2 3 4 5 6 7 8 9 10 11
         DEPOLARIZE1(0.125) 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
@@ -273,370 +293,388 @@ def test_exact_circuit_SD6_V():
         H 0 1 2 3 4 5 6 7 8 9 10 11
         DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
         TICK
-        R 16 20 23 26 28 31
+        R 15 19 22 25 29 33
         H 0 1 2 3 4 5 6 7 8 9 10 11
-        X_ERROR(0.125) 16 20 23 26 28 31
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        X_ERROR(0.125) 15 19 22 25 29 33
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        CX 2 16 5 20 8 23 10 26 0 28 4 31
-        DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 0 28 4 31
-        DEPOLARIZE1(0.125) 1 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        CX 1 15 4 19 7 22 9 25 0 29 6 33
+        DEPOLARIZE2(0.125) 1 15 4 19 7 22 9 25 0 29 6 33
+        DEPOLARIZE1(0.125) 2 3 5 8 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        CX 3 16 6 20 9 23 11 26 1 28 7 31
-        DEPOLARIZE2(0.125) 3 16 6 20 9 23 11 26 1 28 7 31
-        DEPOLARIZE1(0.125) 0 2 4 5 8 10 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        CX 2 15 5 19 8 22 10 25 3 29 11 33
+        DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 11 33
+        DEPOLARIZE1(0.125) 0 1 4 6 7 9 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        X_ERROR(0.125) 16 20 23 26 28 31
-        M 16 20 23 26 28 31
+        X_ERROR(0.125) 15 19 22 25 29 33
+        M 15 19 22 25 29 33
         H 0 1 2 3 4 5 6 7 8 9 10 11
-        DETECTOR(1, 1.5, 0) rec[-6]
-        DETECTOR(2, 1.5, 0) rec[-5]
-        DETECTOR(2, 4.5, 0) rec[-4]
-        DETECTOR(3, 4.5, 0) rec[-3]
+        DETECTOR(0, 4.5, 0) rec[-6]
+        DETECTOR(1, 1.5, 0) rec[-5]
+        DETECTOR(1, 4.5, 0) rec[-4]
+        DETECTOR(2, 1.5, 0) rec[-3]
         DETECTOR(0.5, 0, 0) rec[-2]
         DETECTOR(1.5, 3, 0) rec[-1]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        R 13 15 18 19 22 25 29 32 33 35
+        R 13 14 18 21 24 27 28 30 34 35
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-        X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+        X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
         TICK
-        CX 0 13 1 15 4 18 7 22 6 33 11 35
-        DEPOLARIZE2(0.125) 0 13 1 15 4 18 7 22 6 33 11 35
-        DEPOLARIZE1(0.125) 2 3 5 8 9 10 12 14 16 17 19 20 21 23 24 25 26 27 28 29 30 31 32 34
+        CX 0 13 3 18 6 21 11 27 8 34 10 35
+        DEPOLARIZE2(0.125) 0 13 3 18 6 21 11 27 8 34 10 35
+        DEPOLARIZE1(0.125) 1 2 4 5 7 9 12 14 15 16 17 19 20 22 23 24 25 26 28 29 30 31 32 33
         TICK
-        CX 2 15 5 19 8 22 10 25 3 29 9 32
-        DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 9 32
-        DEPOLARIZE1(0.125) 0 1 4 6 7 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 33 34 35
+        CX 1 14 4 18 7 21 9 24 2 28 5 30
+        DEPOLARIZE2(0.125) 1 14 4 18 7 21 9 24 2 28 5 30
+        DEPOLARIZE1(0.125) 0 3 6 8 10 11 12 13 15 16 17 19 20 22 23 25 26 27 29 31 32 33 34 35
         TICK
-        X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-        M 13 15 18 19 22 25 29 32 33 35
+        X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+        M 13 14 18 21 24 27 28 30 34 35
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-        OBSERVABLE_INCLUDE(0) rec[-7] rec[-6]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+        OBSERVABLE_INCLUDE(0) rec[-8] rec[-7]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
         TICK
-        R 12 14 17 21 24 27 30 34
-        X_ERROR(0.125) 12 14 17 21 24 27 30 34
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        R 12 16 17 20 23 26 31 32
+        X_ERROR(0.125) 12 16 17 20 23 26 31 32
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        CX 3 17 6 21 9 24 11 27 2 30 8 34
-        DEPOLARIZE2(0.125) 3 17 6 21 9 24 11 27 2 30 8 34
-        DEPOLARIZE1(0.125) 0 1 4 5 7 10 12 13 14 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        CX 2 16 5 20 8 23 10 26 1 31 4 32
+        DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 1 31 4 32
+        DEPOLARIZE1(0.125) 0 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        CX 0 12 1 14 4 17 7 21 5 30 10 34
-        DEPOLARIZE2(0.125) 0 12 1 14 4 17 7 21 5 30 10 34
-        DEPOLARIZE1(0.125) 2 3 6 8 9 11 13 15 16 18 19 20 22 23 24 25 26 27 28 29 31 32 33 35
+        CX 0 12 3 17 6 20 11 26 7 31 9 32
+        DEPOLARIZE2(0.125) 0 12 3 17 6 20 11 26 7 31 9 32
+        DEPOLARIZE1(0.125) 1 2 4 5 8 10 13 14 15 16 18 19 21 22 23 24 25 27 28 29 30 33 34 35
         TICK
-        X_ERROR(0.125) 12 14 17 21 24 27 30 34
-        M 12 14 17 21 24 27 30 34
-        OBSERVABLE_INCLUDE(0) rec[-5] rec[-4]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        X_ERROR(0.125) 12 16 17 20 23 26 31 32
+        M 12 16 17 20 23 26 31 32
+        OBSERVABLE_INCLUDE(0) rec[-6] rec[-5] rec[-4]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        R 16 20 23 26 28 31
+        R 15 19 22 25 29 33
         H 0 1 2 3 4 5 6 7 8 9 10 11
-        X_ERROR(0.125) 16 20 23 26 28 31
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        X_ERROR(0.125) 15 19 22 25 29 33
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        CX 2 16 5 20 8 23 10 26 0 28 4 31
-        DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 0 28 4 31
-        DEPOLARIZE1(0.125) 1 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        CX 1 15 4 19 7 22 9 25 0 29 6 33
+        DEPOLARIZE2(0.125) 1 15 4 19 7 22 9 25 0 29 6 33
+        DEPOLARIZE1(0.125) 2 3 5 8 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        CX 3 16 6 20 9 23 11 26 1 28 7 31
-        DEPOLARIZE2(0.125) 3 16 6 20 9 23 11 26 1 28 7 31
-        DEPOLARIZE1(0.125) 0 2 4 5 8 10 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        CX 2 15 5 19 8 22 10 25 3 29 11 33
+        DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 11 33
+        DEPOLARIZE1(0.125) 0 1 4 6 7 9 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        X_ERROR(0.125) 16 20 23 26 28 31
-        M 16 20 23 26 28 31
+        X_ERROR(0.125) 15 19 22 25 29 33
+        M 15 19 22 25 29 33
         H 0 1 2 3 4 5 6 7 8 9 10 11
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        R 12 14 17 21 24 27 30 34
-        X_ERROR(0.125) 12 14 17 21 24 27 30 34
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        R 12 16 17 20 23 26 31 32
+        X_ERROR(0.125) 12 16 17 20 23 26 31 32
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        CX 3 17 6 21 9 24 11 27 2 30 8 34
-        DEPOLARIZE2(0.125) 3 17 6 21 9 24 11 27 2 30 8 34
-        DEPOLARIZE1(0.125) 0 1 4 5 7 10 12 13 14 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        CX 2 16 5 20 8 23 10 26 1 31 4 32
+        DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 1 31 4 32
+        DEPOLARIZE1(0.125) 0 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        CX 0 12 1 14 4 17 7 21 5 30 10 34
-        DEPOLARIZE2(0.125) 0 12 1 14 4 17 7 21 5 30 10 34
-        DEPOLARIZE1(0.125) 2 3 6 8 9 11 13 15 16 18 19 20 22 23 24 25 26 27 28 29 31 32 33 35
+        CX 0 12 3 17 6 20 11 26 7 31 9 32
+        DEPOLARIZE2(0.125) 0 12 3 17 6 20 11 26 7 31 9 32
+        DEPOLARIZE1(0.125) 1 2 4 5 8 10 13 14 15 16 18 19 21 22 23 24 25 27 28 29 30 33 34 35
         TICK
-        X_ERROR(0.125) 12 14 17 21 24 27 30 34
-        M 12 14 17 21 24 27 30 34
-        OBSERVABLE_INCLUDE(0) rec[-5] rec[-4]
-        DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
-        DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
-        DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        X_ERROR(0.125) 12 16 17 20 23 26 31 32
+        M 12 16 17 20 23 26 31 32
+        OBSERVABLE_INCLUDE(0) rec[-6] rec[-5] rec[-4]
+        DETECTOR(1.5, 2, 0) rec[-19] rec[-17] rec[-15] rec[-5] rec[-3] rec[-1]
+        DETECTOR(0.5, 5, 0) rec[-21] rec[-18] rec[-16] rec[-7] rec[-4] rec[-2]
+        DETECTOR(0.5, -1, 0) rec[-22] rec[-20] rec[-8] rec[-6]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        R 13 15 18 19 22 25 29 32 33 35
+        R 13 14 18 21 24 27 28 30 34 35
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-        X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+        X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
         TICK
-        CX 0 13 1 15 4 18 7 22 6 33 11 35
-        DEPOLARIZE2(0.125) 0 13 1 15 4 18 7 22 6 33 11 35
-        DEPOLARIZE1(0.125) 2 3 5 8 9 10 12 14 16 17 19 20 21 23 24 25 26 27 28 29 30 31 32 34
+        CX 0 13 3 18 6 21 11 27 8 34 10 35
+        DEPOLARIZE2(0.125) 0 13 3 18 6 21 11 27 8 34 10 35
+        DEPOLARIZE1(0.125) 1 2 4 5 7 9 12 14 15 16 17 19 20 22 23 24 25 26 28 29 30 31 32 33
         TICK
-        CX 2 15 5 19 8 22 10 25 3 29 9 32
-        DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 9 32
-        DEPOLARIZE1(0.125) 0 1 4 6 7 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 33 34 35
+        CX 1 14 4 18 7 21 9 24 2 28 5 30
+        DEPOLARIZE2(0.125) 1 14 4 18 7 21 9 24 2 28 5 30
+        DEPOLARIZE1(0.125) 0 3 6 8 10 11 12 13 15 16 17 19 20 22 23 25 26 27 29 31 32 33 34 35
         TICK
-        X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-        M 13 15 18 19 22 25 29 32 33 35
+        X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+        M 13 14 18 21 24 27 28 30 34 35
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-        OBSERVABLE_INCLUDE(0) rec[-7] rec[-6]
-        DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
-        DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+        OBSERVABLE_INCLUDE(0) rec[-8] rec[-7]
+        DETECTOR(2.5, 3, 0) rec[-37] rec[-33] rec[-27] rec[-13] rec[-5] rec[-1]
+        DETECTOR(0.5, 3, 0) rec[-41] rec[-39] rec[-35] rec[-29] rec[-26] rec[-15] rec[-12] rec[-9] rec[-7] rec[-3]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
         TICK
         REPEAT 48 {
-            R 16 20 23 26 28 31
+            R 15 19 22 25 29 33
             H 0 1 2 3 4 5 6 7 8 9 10 11
-            X_ERROR(0.125) 16 20 23 26 28 31
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+            X_ERROR(0.125) 15 19 22 25 29 33
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
             TICK
-            CX 2 16 5 20 8 23 10 26 0 28 4 31
-            DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 0 28 4 31
-            DEPOLARIZE1(0.125) 1 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+            CX 1 15 4 19 7 22 9 25 0 29 6 33
+            DEPOLARIZE2(0.125) 1 15 4 19 7 22 9 25 0 29 6 33
+            DEPOLARIZE1(0.125) 2 3 5 8 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
             TICK
-            CX 3 16 6 20 9 23 11 26 1 28 7 31
-            DEPOLARIZE2(0.125) 3 16 6 20 9 23 11 26 1 28 7 31
-            DEPOLARIZE1(0.125) 0 2 4 5 8 10 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+            CX 2 15 5 19 8 22 10 25 3 29 11 33
+            DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 11 33
+            DEPOLARIZE1(0.125) 0 1 4 6 7 9 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
             TICK
-            X_ERROR(0.125) 16 20 23 26 28 31
-            M 16 20 23 26 28 31
+            X_ERROR(0.125) 15 19 22 25 29 33
+            M 15 19 22 25 29 33
             H 0 1 2 3 4 5 6 7 8 9 10 11
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+            SHIFT_COORDS(0, 0, 1)
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
             TICK
-            R 13 15 18 19 22 25 29 32 33 35
+            R 13 14 18 21 24 27 28 30 34 35
             H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-            X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+            X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
             TICK
-            CX 0 13 1 15 4 18 7 22 6 33 11 35
-            DEPOLARIZE2(0.125) 0 13 1 15 4 18 7 22 6 33 11 35
-            DEPOLARIZE1(0.125) 2 3 5 8 9 10 12 14 16 17 19 20 21 23 24 25 26 27 28 29 30 31 32 34
+            CX 0 13 3 18 6 21 11 27 8 34 10 35
+            DEPOLARIZE2(0.125) 0 13 3 18 6 21 11 27 8 34 10 35
+            DEPOLARIZE1(0.125) 1 2 4 5 7 9 12 14 15 16 17 19 20 22 23 24 25 26 28 29 30 31 32 33
             TICK
-            CX 2 15 5 19 8 22 10 25 3 29 9 32
-            DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 9 32
-            DEPOLARIZE1(0.125) 0 1 4 6 7 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 33 34 35
+            CX 1 14 4 18 7 21 9 24 2 28 5 30
+            DEPOLARIZE2(0.125) 1 14 4 18 7 21 9 24 2 28 5 30
+            DEPOLARIZE1(0.125) 0 3 6 8 10 11 12 13 15 16 17 19 20 22 23 25 26 27 29 31 32 33 34 35
             TICK
-            X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-            M 13 15 18 19 22 25 29 32 33 35
+            X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+            M 13 14 18 21 24 27 28 30 34 35
             H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-            OBSERVABLE_INCLUDE(0) rec[-7] rec[-6]
-            DETECTOR(1.5, 4, 0) rec[-24] rec[-22] rec[-19] rec[-8] rec[-6] rec[-3]
-            DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
-            DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
-            DETECTOR(3.5, 4, 0) rec[-21] rec[-17] rec[-5] rec[-1]
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+            OBSERVABLE_INCLUDE(0) rec[-8] rec[-7]
+            DETECTOR(2.5, 1, 0) rec[-22] rec[-17] rec[-6] rec[-1]
+            DETECTOR(1.5, 4, 0) rec[-23] rec[-21] rec[-18] rec[-7] rec[-5] rec[-2]
+            DETECTOR(-0.5, 4, 0) rec[-25] rec[-20] rec[-9] rec[-4]
+            DETECTOR(0.5, 1, 0) rec[-26] rec[-24] rec[-19] rec[-10] rec[-8] rec[-3]
+            SHIFT_COORDS(0, 0, 1)
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
             TICK
-            R 12 14 17 21 24 27 30 34
-            X_ERROR(0.125) 12 14 17 21 24 27 30 34
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+            R 12 16 17 20 23 26 31 32
+            X_ERROR(0.125) 12 16 17 20 23 26 31 32
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
             TICK
-            CX 3 17 6 21 9 24 11 27 2 30 8 34
-            DEPOLARIZE2(0.125) 3 17 6 21 9 24 11 27 2 30 8 34
-            DEPOLARIZE1(0.125) 0 1 4 5 7 10 12 13 14 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+            CX 2 16 5 20 8 23 10 26 1 31 4 32
+            DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 1 31 4 32
+            DEPOLARIZE1(0.125) 0 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 28 29 30 33 34 35
             TICK
-            CX 0 12 1 14 4 17 7 21 5 30 10 34
-            DEPOLARIZE2(0.125) 0 12 1 14 4 17 7 21 5 30 10 34
-            DEPOLARIZE1(0.125) 2 3 6 8 9 11 13 15 16 18 19 20 22 23 24 25 26 27 28 29 31 32 33 35
+            CX 0 12 3 17 6 20 11 26 7 31 9 32
+            DEPOLARIZE2(0.125) 0 12 3 17 6 20 11 26 7 31 9 32
+            DEPOLARIZE1(0.125) 1 2 4 5 8 10 13 14 15 16 18 19 21 22 23 24 25 27 28 29 30 33 34 35
             TICK
-            X_ERROR(0.125) 12 14 17 21 24 27 30 34
-            M 12 14 17 21 24 27 30 34
-            OBSERVABLE_INCLUDE(0) rec[-5] rec[-4]
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+            X_ERROR(0.125) 12 16 17 20 23 26 31 32
+            M 12 16 17 20 23 26 31 32
+            OBSERVABLE_INCLUDE(0) rec[-6] rec[-5] rec[-4]
+            SHIFT_COORDS(0, 0, 1)
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
             TICK
-            R 16 20 23 26 28 31
+            R 15 19 22 25 29 33
             H 0 1 2 3 4 5 6 7 8 9 10 11
-            X_ERROR(0.125) 16 20 23 26 28 31
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+            X_ERROR(0.125) 15 19 22 25 29 33
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
             TICK
-            CX 2 16 5 20 8 23 10 26 0 28 4 31
-            DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 0 28 4 31
-            DEPOLARIZE1(0.125) 1 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+            CX 1 15 4 19 7 22 9 25 0 29 6 33
+            DEPOLARIZE2(0.125) 1 15 4 19 7 22 9 25 0 29 6 33
+            DEPOLARIZE1(0.125) 2 3 5 8 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
             TICK
-            CX 3 16 6 20 9 23 11 26 1 28 7 31
-            DEPOLARIZE2(0.125) 3 16 6 20 9 23 11 26 1 28 7 31
-            DEPOLARIZE1(0.125) 0 2 4 5 8 10 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+            CX 2 15 5 19 8 22 10 25 3 29 11 33
+            DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 11 33
+            DEPOLARIZE1(0.125) 0 1 4 6 7 9 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
             TICK
-            X_ERROR(0.125) 16 20 23 26 28 31
-            M 16 20 23 26 28 31
+            X_ERROR(0.125) 15 19 22 25 29 33
+            M 15 19 22 25 29 33
             H 0 1 2 3 4 5 6 7 8 9 10 11
-            DETECTOR(1.5, 2, 0) rec[-54] rec[-53] rec[-49] rec[-46] rec[-45] rec[-42] rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+            DETECTOR(1.5, 2, 0) rec[-53] rec[-51] rec[-49] rec[-45] rec[-43] rec[-41] rec[-11] rec[-9] rec[-7] rec[-5] rec[-3] rec[-1]
+            SHIFT_COORDS(0, 0, 1)
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
             TICK
-            R 12 14 17 21 24 27 30 34
-            X_ERROR(0.125) 12 14 17 21 24 27 30 34
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+            R 12 16 17 20 23 26 31 32
+            X_ERROR(0.125) 12 16 17 20 23 26 31 32
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
             TICK
-            CX 3 17 6 21 9 24 11 27 2 30 8 34
-            DEPOLARIZE2(0.125) 3 17 6 21 9 24 11 27 2 30 8 34
-            DEPOLARIZE1(0.125) 0 1 4 5 7 10 12 13 14 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+            CX 2 16 5 20 8 23 10 26 1 31 4 32
+            DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 1 31 4 32
+            DEPOLARIZE1(0.125) 0 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 28 29 30 33 34 35
             TICK
-            CX 0 12 1 14 4 17 7 21 5 30 10 34
-            DEPOLARIZE2(0.125) 0 12 1 14 4 17 7 21 5 30 10 34
-            DEPOLARIZE1(0.125) 2 3 6 8 9 11 13 15 16 18 19 20 22 23 24 25 26 27 28 29 31 32 33 35
+            CX 0 12 3 17 6 20 11 26 7 31 9 32
+            DEPOLARIZE2(0.125) 0 12 3 17 6 20 11 26 7 31 9 32
+            DEPOLARIZE1(0.125) 1 2 4 5 8 10 13 14 15 16 18 19 21 22 23 24 25 27 28 29 30 33 34 35
             TICK
-            X_ERROR(0.125) 12 14 17 21 24 27 30 34
-            M 12 14 17 21 24 27 30 34
-            OBSERVABLE_INCLUDE(0) rec[-5] rec[-4]
-            DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
-            DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
-            DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+            X_ERROR(0.125) 12 16 17 20 23 26 31 32
+            M 12 16 17 20 23 26 31 32
+            OBSERVABLE_INCLUDE(0) rec[-6] rec[-5] rec[-4]
+            DETECTOR(1.5, 2, 0) rec[-19] rec[-17] rec[-15] rec[-5] rec[-3] rec[-1]
+            DETECTOR(0.5, 5, 0) rec[-21] rec[-18] rec[-16] rec[-7] rec[-4] rec[-2]
+            DETECTOR(0.5, -1, 0) rec[-22] rec[-20] rec[-8] rec[-6]
+            SHIFT_COORDS(0, 0, 1)
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
             TICK
-            R 13 15 18 19 22 25 29 32 33 35
+            R 13 14 18 21 24 27 28 30 34 35
             H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-            X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+            X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
             TICK
-            CX 0 13 1 15 4 18 7 22 6 33 11 35
-            DEPOLARIZE2(0.125) 0 13 1 15 4 18 7 22 6 33 11 35
-            DEPOLARIZE1(0.125) 2 3 5 8 9 10 12 14 16 17 19 20 21 23 24 25 26 27 28 29 30 31 32 34
+            CX 0 13 3 18 6 21 11 27 8 34 10 35
+            DEPOLARIZE2(0.125) 0 13 3 18 6 21 11 27 8 34 10 35
+            DEPOLARIZE1(0.125) 1 2 4 5 7 9 12 14 15 16 17 19 20 22 23 24 25 26 28 29 30 31 32 33
             TICK
-            CX 2 15 5 19 8 22 10 25 3 29 9 32
-            DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 9 32
-            DEPOLARIZE1(0.125) 0 1 4 6 7 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 33 34 35
+            CX 1 14 4 18 7 21 9 24 2 28 5 30
+            DEPOLARIZE2(0.125) 1 14 4 18 7 21 9 24 2 28 5 30
+            DEPOLARIZE1(0.125) 0 3 6 8 10 11 12 13 15 16 17 19 20 22 23 25 26 27 29 31 32 33 34 35
             TICK
-            X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-            M 13 15 18 19 22 25 29 32 33 35
+            X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+            M 13 14 18 21 24 27 28 30 34 35
             H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-            OBSERVABLE_INCLUDE(0) rec[-7] rec[-6]
-            DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
-            DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
-            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+            OBSERVABLE_INCLUDE(0) rec[-8] rec[-7]
+            DETECTOR(2.5, 3, 0) rec[-37] rec[-33] rec[-27] rec[-13] rec[-5] rec[-1]
+            DETECTOR(0.5, 3, 0) rec[-41] rec[-39] rec[-35] rec[-29] rec[-26] rec[-15] rec[-12] rec[-9] rec[-7] rec[-3]
+            SHIFT_COORDS(0, 0, 1)
+            DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
             TICK
         }
         TICK
-        R 16 20 23 26 28 31
+        R 15 19 22 25 29 33
         H 0 1 2 3 4 5 6 7 8 9 10 11
-        X_ERROR(0.125) 16 20 23 26 28 31
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        X_ERROR(0.125) 15 19 22 25 29 33
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        CX 2 16 5 20 8 23 10 26 0 28 4 31
-        DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 0 28 4 31
-        DEPOLARIZE1(0.125) 1 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        CX 1 15 4 19 7 22 9 25 0 29 6 33
+        DEPOLARIZE2(0.125) 1 15 4 19 7 22 9 25 0 29 6 33
+        DEPOLARIZE1(0.125) 2 3 5 8 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        CX 3 16 6 20 9 23 11 26 1 28 7 31
-        DEPOLARIZE2(0.125) 3 16 6 20 9 23 11 26 1 28 7 31
-        DEPOLARIZE1(0.125) 0 2 4 5 8 10 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        CX 2 15 5 19 8 22 10 25 3 29 11 33
+        DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 11 33
+        DEPOLARIZE1(0.125) 0 1 4 6 7 9 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        X_ERROR(0.125) 16 20 23 26 28 31
-        M 16 20 23 26 28 31
+        X_ERROR(0.125) 15 19 22 25 29 33
+        M 15 19 22 25 29 33
         H 0 1 2 3 4 5 6 7 8 9 10 11
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        R 13 15 18 19 22 25 29 32 33 35
+        R 13 14 18 21 24 27 28 30 34 35
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-        X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+        X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
         TICK
-        CX 0 13 1 15 4 18 7 22 6 33 11 35
-        DEPOLARIZE2(0.125) 0 13 1 15 4 18 7 22 6 33 11 35
-        DEPOLARIZE1(0.125) 2 3 5 8 9 10 12 14 16 17 19 20 21 23 24 25 26 27 28 29 30 31 32 34
+        CX 0 13 3 18 6 21 11 27 8 34 10 35
+        DEPOLARIZE2(0.125) 0 13 3 18 6 21 11 27 8 34 10 35
+        DEPOLARIZE1(0.125) 1 2 4 5 7 9 12 14 15 16 17 19 20 22 23 24 25 26 28 29 30 31 32 33
         TICK
-        CX 2 15 5 19 8 22 10 25 3 29 9 32
-        DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 9 32
-        DEPOLARIZE1(0.125) 0 1 4 6 7 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 33 34 35
+        CX 1 14 4 18 7 21 9 24 2 28 5 30
+        DEPOLARIZE2(0.125) 1 14 4 18 7 21 9 24 2 28 5 30
+        DEPOLARIZE1(0.125) 0 3 6 8 10 11 12 13 15 16 17 19 20 22 23 25 26 27 29 31 32 33 34 35
         TICK
-        X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-        M 13 15 18 19 22 25 29 32 33 35
+        X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+        M 13 14 18 21 24 27 28 30 34 35
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-        OBSERVABLE_INCLUDE(0) rec[-7] rec[-6]
-        DETECTOR(1.5, 4, 0) rec[-24] rec[-22] rec[-19] rec[-8] rec[-6] rec[-3]
-        DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
-        DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
-        DETECTOR(3.5, 4, 0) rec[-21] rec[-17] rec[-5] rec[-1]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+        OBSERVABLE_INCLUDE(0) rec[-8] rec[-7]
+        DETECTOR(2.5, 1, 0) rec[-22] rec[-17] rec[-6] rec[-1]
+        DETECTOR(1.5, 4, 0) rec[-23] rec[-21] rec[-18] rec[-7] rec[-5] rec[-2]
+        DETECTOR(-0.5, 4, 0) rec[-25] rec[-20] rec[-9] rec[-4]
+        DETECTOR(0.5, 1, 0) rec[-26] rec[-24] rec[-19] rec[-10] rec[-8] rec[-3]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
         TICK
-        R 12 14 17 21 24 27 30 34
-        X_ERROR(0.125) 12 14 17 21 24 27 30 34
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        R 12 16 17 20 23 26 31 32
+        X_ERROR(0.125) 12 16 17 20 23 26 31 32
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        CX 3 17 6 21 9 24 11 27 2 30 8 34
-        DEPOLARIZE2(0.125) 3 17 6 21 9 24 11 27 2 30 8 34
-        DEPOLARIZE1(0.125) 0 1 4 5 7 10 12 13 14 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        CX 2 16 5 20 8 23 10 26 1 31 4 32
+        DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 1 31 4 32
+        DEPOLARIZE1(0.125) 0 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        CX 0 12 1 14 4 17 7 21 5 30 10 34
-        DEPOLARIZE2(0.125) 0 12 1 14 4 17 7 21 5 30 10 34
-        DEPOLARIZE1(0.125) 2 3 6 8 9 11 13 15 16 18 19 20 22 23 24 25 26 27 28 29 31 32 33 35
+        CX 0 12 3 17 6 20 11 26 7 31 9 32
+        DEPOLARIZE2(0.125) 0 12 3 17 6 20 11 26 7 31 9 32
+        DEPOLARIZE1(0.125) 1 2 4 5 8 10 13 14 15 16 18 19 21 22 23 24 25 27 28 29 30 33 34 35
         TICK
-        X_ERROR(0.125) 12 14 17 21 24 27 30 34
-        M 12 14 17 21 24 27 30 34
-        OBSERVABLE_INCLUDE(0) rec[-5] rec[-4]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        X_ERROR(0.125) 12 16 17 20 23 26 31 32
+        M 12 16 17 20 23 26 31 32
+        OBSERVABLE_INCLUDE(0) rec[-6] rec[-5] rec[-4]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        R 16 20 23 26 28 31
+        R 15 19 22 25 29 33
         H 0 1 2 3 4 5 6 7 8 9 10 11
-        X_ERROR(0.125) 16 20 23 26 28 31
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        X_ERROR(0.125) 15 19 22 25 29 33
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        CX 2 16 5 20 8 23 10 26 0 28 4 31
-        DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 0 28 4 31
-        DEPOLARIZE1(0.125) 1 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        CX 1 15 4 19 7 22 9 25 0 29 6 33
+        DEPOLARIZE2(0.125) 1 15 4 19 7 22 9 25 0 29 6 33
+        DEPOLARIZE1(0.125) 2 3 5 8 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        CX 3 16 6 20 9 23 11 26 1 28 7 31
-        DEPOLARIZE2(0.125) 3 16 6 20 9 23 11 26 1 28 7 31
-        DEPOLARIZE1(0.125) 0 2 4 5 8 10 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        CX 2 15 5 19 8 22 10 25 3 29 11 33
+        DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 11 33
+        DEPOLARIZE1(0.125) 0 1 4 6 7 9 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        X_ERROR(0.125) 16 20 23 26 28 31
-        M 16 20 23 26 28 31
+        X_ERROR(0.125) 15 19 22 25 29 33
+        M 15 19 22 25 29 33
         H 0 1 2 3 4 5 6 7 8 9 10 11
-        DETECTOR(1.5, 2, 0) rec[-54] rec[-53] rec[-49] rec[-46] rec[-45] rec[-42] rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 18 19 21 22 24 25 27 29 30 32 33 34 35
+        DETECTOR(1.5, 2, 0) rec[-53] rec[-51] rec[-49] rec[-45] rec[-43] rec[-41] rec[-11] rec[-9] rec[-7] rec[-5] rec[-3] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 32 34 35
         TICK
-        R 12 14 17 21 24 27 30 34
-        X_ERROR(0.125) 12 14 17 21 24 27 30 34
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        R 12 16 17 20 23 26 31 32
+        X_ERROR(0.125) 12 16 17 20 23 26 31 32
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        CX 3 17 6 21 9 24 11 27 2 30 8 34
-        DEPOLARIZE2(0.125) 3 17 6 21 9 24 11 27 2 30 8 34
-        DEPOLARIZE1(0.125) 0 1 4 5 7 10 12 13 14 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        CX 2 16 5 20 8 23 10 26 1 31 4 32
+        DEPOLARIZE2(0.125) 2 16 5 20 8 23 10 26 1 31 4 32
+        DEPOLARIZE1(0.125) 0 3 6 7 9 11 12 13 14 15 17 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        CX 0 12 1 14 4 17 7 21 5 30 10 34
-        DEPOLARIZE2(0.125) 0 12 1 14 4 17 7 21 5 30 10 34
-        DEPOLARIZE1(0.125) 2 3 6 8 9 11 13 15 16 18 19 20 22 23 24 25 26 27 28 29 31 32 33 35
+        CX 0 12 3 17 6 20 11 26 7 31 9 32
+        DEPOLARIZE2(0.125) 0 12 3 17 6 20 11 26 7 31 9 32
+        DEPOLARIZE1(0.125) 1 2 4 5 8 10 13 14 15 16 18 19 21 22 23 24 25 27 28 29 30 33 34 35
         TICK
-        X_ERROR(0.125) 12 14 17 21 24 27 30 34
-        M 12 14 17 21 24 27 30 34
-        OBSERVABLE_INCLUDE(0) rec[-5] rec[-4]
-        DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
-        DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
-        DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 15 16 18 19 20 22 23 25 26 28 29 31 32 33 35
+        X_ERROR(0.125) 12 16 17 20 23 26 31 32
+        M 12 16 17 20 23 26 31 32
+        OBSERVABLE_INCLUDE(0) rec[-6] rec[-5] rec[-4]
+        DETECTOR(1.5, 2, 0) rec[-19] rec[-17] rec[-15] rec[-5] rec[-3] rec[-1]
+        DETECTOR(0.5, 5, 0) rec[-21] rec[-18] rec[-16] rec[-7] rec[-4] rec[-2]
+        DETECTOR(0.5, -1, 0) rec[-22] rec[-20] rec[-8] rec[-6]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 18 19 21 22 24 25 27 28 29 30 33 34 35
         TICK
-        R 13 15 18 19 22 25 29 32 33 35
+        R 13 14 18 21 24 27 28 30 34 35
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-        X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+        X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
         TICK
-        CX 0 13 1 15 4 18 7 22 6 33 11 35
-        DEPOLARIZE2(0.125) 0 13 1 15 4 18 7 22 6 33 11 35
-        DEPOLARIZE1(0.125) 2 3 5 8 9 10 12 14 16 17 19 20 21 23 24 25 26 27 28 29 30 31 32 34
+        CX 0 13 3 18 6 21 11 27 8 34 10 35
+        DEPOLARIZE2(0.125) 0 13 3 18 6 21 11 27 8 34 10 35
+        DEPOLARIZE1(0.125) 1 2 4 5 7 9 12 14 15 16 17 19 20 22 23 24 25 26 28 29 30 31 32 33
         TICK
-        CX 2 15 5 19 8 22 10 25 3 29 9 32
-        DEPOLARIZE2(0.125) 2 15 5 19 8 22 10 25 3 29 9 32
-        DEPOLARIZE1(0.125) 0 1 4 6 7 11 12 13 14 16 17 18 20 21 23 24 26 27 28 30 31 33 34 35
+        CX 1 14 4 18 7 21 9 24 2 28 5 30
+        DEPOLARIZE2(0.125) 1 14 4 18 7 21 9 24 2 28 5 30
+        DEPOLARIZE1(0.125) 0 3 6 8 10 11 12 13 15 16 17 19 20 22 23 25 26 27 29 31 32 33 34 35
         TICK
-        X_ERROR(0.125) 13 15 18 19 22 25 29 32 33 35
-        M 13 15 18 19 22 25 29 32 33 35
+        X_ERROR(0.125) 13 14 18 21 24 27 28 30 34 35
+        M 13 14 18 21 24 27 28 30 34 35
         H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
-        OBSERVABLE_INCLUDE(0) rec[-7] rec[-6]
-        DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
-        DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
-        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 17 20 21 23 24 26 27 28 30 31 34
+        OBSERVABLE_INCLUDE(0) rec[-8] rec[-7]
+        DETECTOR(2.5, 3, 0) rec[-37] rec[-33] rec[-27] rec[-13] rec[-5] rec[-1]
+        DETECTOR(0.5, 3, 0) rec[-41] rec[-39] rec[-35] rec[-29] rec[-26] rec[-15] rec[-12] rec[-9] rec[-7] rec[-3]
+        SHIFT_COORDS(0, 0, 1)
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 15 16 17 19 20 22 23 25 26 29 31 32 33
         TICK
         H 0 1 2 3 4 5 6 7 8 9 10 11
         DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
         TICK
         X_ERROR(0.125) 0 1 2 3 4 5 6 7 8 9 10 11
         M 0 1 2 3 4 5 6 7 8 9 10 11
-        OBSERVABLE_INCLUDE(0) rec[-7] rec[-6] rec[-4] rec[-3]
+        OBSERVABLE_INCLUDE(0) rec[-9] rec[-8] rec[-6] rec[-5]
         DEPOLARIZE1(0.125) 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
         TICK
     """)

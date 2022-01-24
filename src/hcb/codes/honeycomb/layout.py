@@ -9,7 +9,6 @@ from hcb.codes.surface.stabilizer_plan_problem import StabilizerPlanProblem
 from hcb.tools.analysis.collecting import DecodingProblem, DecodingProblemDesc
 from hcb.tools.gen.circuit_canvas import complex_key
 from hcb.tools.gen.measurement_tracker import MeasurementTracker, Prev
-from hcb.tools.gen.noise import NoiseModel
 from hcb.tools.gen.stabilizer_plan import StabilizerPlan, StabilizerPlanElement
 
 HEX_DATA_OFFSETS = (
@@ -67,6 +66,21 @@ INIT_COMPARISON_RULES: Dict[Tuple[Optional[str], str, Optional[str]], Comparison
     ),
 }
 
+OSCILLATING_BOUNDARY_OFFSETS = {
+    0: -0.25,
+    0.5: -0.25,
+    1: +0.25,
+    1.5: +0.25,
+    2: +0.25,
+    2.5: +0.25,
+    3: +0.25,
+    3.5: -0.25,
+    4: -0.25,
+    4.5: -0.25,
+    5: -0.75,
+    5.5: -0.25,
+}
+
 def comparisons_for_step(*,
                          previous_measurements: str,
                          data_init_basis: Optional[str],
@@ -113,7 +127,7 @@ def comparisons_for_step(*,
             return ComparisonRule(
                 kind='hex',
                 filter_basis=remainder,
-                product=tuple(sorted(pieces, key=lambda p: (p.v, p.offset))),
+                product=tuple(sorted(pieces, key=lambda pc: (pc.v, pc.offset))),
                 last_measure_basis=previous_measurements[-1],
             )
 
@@ -171,7 +185,8 @@ class HoneycombLayout:
                  rounds: int,
                  noise_level: float,
                  noisy_gate_set: str,
-                 tested_observable: str):
+                 tested_observable: str,
+                 sheared: bool = False):
         """
         Args:
             data_width: The left-to-right diameter of the patch.
@@ -202,11 +217,15 @@ class HoneycombLayout:
         self.rounds = rounds
         self.noise_level = noise_level
         self.noisy_gate_set = noisy_gate_set
+        self.sheared = sheared
         assert self.tested_observable in ['V', 'H', 'EPR']
-        assert self.data_width % 2 == 0
+        assert self.data_width % 2 == 0 or not self.sheared
         assert self.data_height % 3 == 0
-        assert self.data_width * 3 >= self.data_height
+        assert self.data_width * 3 >= self.data_height or not self.sheared
         assert self.rounds % 2 == 0 and self.rounds >= 4
+        assert self.data_width > 0
+        assert self.data_height > 0
+
 
     @staticmethod
     def from_code_distance(*,
@@ -261,10 +280,10 @@ class HoneycombLayout:
 
     @functools.cached_property
     def edge_plan(self) -> StabilizerPlan:
-        elements = []
-        for x in range(-2, self.data_width * 2 + 2):
-            for y in range(-2, self.data_height + 2):
-                # Vertical edge.
+        elements: List[StabilizerPlanElement] = []
+        for x in range(-5, self.data_width * 2 + 2):
+            for y in range(-5, self.data_height + 2):
+                # Add vertically oriented edges.
                 c = x + 1j * y
                 h_basis = EDGE_BASIS_SEQUENCE[int(y) % 3]
                 elements.append(StabilizerPlanElement(
@@ -276,6 +295,7 @@ class HoneycombLayout:
                     ),
                 ))
 
+                # Add horizontally oriented edges.
                 if (x + y) & 1 == 0:
                     v_basis = EDGE_BASIS_SEQUENCE[int(y) % 3 - 2]
                     elements.append(StabilizerPlanElement(
@@ -287,23 +307,31 @@ class HoneycombLayout:
                         ),
                     ))
 
-        # Make boundary cuts.
+        # Cut edges to form boundaries.
         kept_elements = []
         for e in elements:
             # Cut along top boundary.
             if e.measurement_qubit.imag < -0.5:
                 continue
-            # Cuts along bottom boundary.
+            # Cut along bottom boundary.
             if e.measurement_qubit.imag > self.data_height - 0.5:
                 continue
-            # Cut along left boundary.
-            if e.measurement_qubit.real * 3 < e.measurement_qubit.imag - 1:
-                # # Handle corner case.
-                # if e.measurement_qubit.imag < self.data_height - 2:
+
+            if self.sheared:
+                # Cut along left boundary.
+                if e.measurement_qubit.real * 3 < e.measurement_qubit.imag - 1:
                     continue
-            # Cuts along right boundary.
-            if (e.measurement_qubit.real - self.data_width) * 3 > e.measurement_qubit.imag:
-                continue
+                # Cut along right boundary.
+                if (e.measurement_qubit.real - self.data_width) * 3 > e.measurement_qubit.imag:
+                    continue
+            else:
+                # Cut along left boundary.
+                if e.measurement_qubit.real < OSCILLATING_BOUNDARY_OFFSETS[e.measurement_qubit.imag % 6]:
+                    continue
+                # Cut along right boundary.
+                dy = 0 if self.data_width % 2 == 1 else 3
+                if e.measurement_qubit.real > self.data_width - OSCILLATING_BOUNDARY_OFFSETS[(dy + e.measurement_qubit.imag) % 6]:
+                    continue
             kept_elements.append(e)
         elements = kept_elements
 
@@ -314,19 +342,28 @@ class HoneycombLayout:
         )
         truncated_elements = []
         for e in elements:
+            dqs = tuple(
+                q if data_qubit_measure_count[q] == 3 else None
+                for q in e.data_qubit_order
+            )
+            if not any(e is not None for e in dqs):
+                print("AHHHHHHHHHHH")
+                print("AHHHHHHHHHHH")
+                print("AHHHHHHHHHHH")
+                print("AHHHHHHHHHHH")
+                print("AHHHHHHHHHHH")
+                continue
+                # assert any(e is not None for e in dqs)
             truncated_elements.append(StabilizerPlanElement(
                 bases=e.bases,
                 measurement_qubit=e.measurement_qubit,
-                data_qubit_order=tuple(
-                    q if data_qubit_measure_count[q] == 3 else None
-                    for q in e.data_qubit_order
-                ),
+                data_qubit_order=dqs,
             ))
         elements = truncated_elements
 
         return StabilizerPlan(tuple(sorted(
             elements,
-            key=lambda e: complex_key(e.measurement_qubit),
+            key=lambda edge: complex_key(edge.measurement_qubit),
         )))
 
     @staticmethod
@@ -352,7 +389,10 @@ class HoneycombLayout:
 
     @functools.cached_property
     def vertical_observable_path(self) -> Tuple[complex, ...]:
-        x = (self.data_height // 6) * 2 + (self.data_height % 2)
+        if self.sheared:
+            x = (self.data_height // 6) * 2 + (self.data_height % 2)
+        else:
+            x = 1
         result = sorted([q for q in self.data_qubit_set if q.real == x], key=complex_key)
         result.append(result[-1] + 1j)
         result.insert(0, result[0] - 1j)
@@ -438,13 +478,21 @@ class HoneycombLayout:
             if ((q + x + y).real + (q + x + y).imag) % 2 == 0
         }
         bulk_hexes = set(self.hexes)
-        return frozenset(
+        result = frozenset(
             h
             for h in expanded_hexes
             if h.measurement_qubits
             and h not in bulk_hexes
             and len(h.data_qubits) in [2, 4]
         )
+
+        # Sanity check.
+        m2e = self.measure_to_element_dict
+        for h in result:
+            assert len(h.data_qubits) in [2, 4]
+            assert h.leaf_basis(m2e=m2e) in ['Y', 'Z']
+
+        return result
 
     @functools.cached_property
     def hex_plan(self) -> StabilizerPlan:

@@ -299,12 +299,13 @@ def magical_obs_bell_measurement(*,
 
 def main():
     out_dir = pathlib.Path(__file__).parent.parent.parent.parent.parent / 'out'
-    layout = HoneycombLayout(data_width=32,
-                             data_height=48,
+    layout = HoneycombLayout(data_width=8,
+                             data_height=15,
                              rounds=10,
                              noise_level=0.001,
                              noisy_gate_set='SD6',
-                             tested_observable='V')
+                             tested_observable='EPR',
+                             sheared=False)
     edge_plan = layout.edge_plan
     hex_plan = layout.hex_plan
     plans = []
