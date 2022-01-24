@@ -1,5 +1,5 @@
 import pathlib
-from typing import Dict, List
+from typing import Dict, List, Any
 
 import stim
 
@@ -18,6 +18,10 @@ from hcb.tools.gen.viewer import stim_circuit_html_viewer
 EPR_ANCILLA: complex = -2
 
 
+def complex_key_prefer_ints(c: complex) -> Any:
+    return int(c.real) != c.real or int(c.imag) != c.imag, complex_key(c)
+
+
 class HoneycombCircuitMaker:
     def __init__(self, *, layout: HoneycombLayout):
         self.noiseless_head_moments: List[stim.Circuit] = []
@@ -33,7 +37,7 @@ class HoneycombCircuitMaker:
             used_qubits = self.layout.edge_plan.data_coords_set()
         else:
             used_qubits = self.layout.edge_plan.used_coords_set()
-        self.q2i = {q: i for i, q in enumerate(sorted(used_qubits, key=complex_key))}
+        self.q2i = {q: i for i, q in enumerate(sorted(used_qubits, key=complex_key_prefer_ints))}
         if self.layout.tested_observable == 'EPR':
             assert EPR_ANCILLA not in self.q2i
             self.q2i[EPR_ANCILLA] = len(self.q2i)
@@ -131,16 +135,44 @@ class HoneycombCircuitMaker:
         for edge_basis in EDGE_MEASUREMENT_SEQUENCE:
             self.append_edge_layer(out_moments=out_moments,
                                    edge_basis=edge_basis)
+            out_moments[-1].append_operation("SHIFT_COORDS", [], [0, 0, 1])
 
     def append_edge_layer(self, *, out_moments: List[stim.Circuit], edge_basis: str):
         self.measured_bases += edge_basis
 
         # Perform edge measurements.
-        added_measurements = []
-        out_moments.append(stim.Circuit())
-        for edge in self.layout.xyz_edges(edge_basis).elements:
-            edge.append_mpp(out_circuit=out_moments[-1], q2i=self.q2i)
-            added_measurements.append(edge.measurement_qubit)
+        data_targets = [self.q2i[q] for q in self.layout.data_qubits]
+        edges = self.layout.xyz_edges(edge_basis).elements
+        if self.layout.noisy_gate_set.startswith('EM'):
+            out_moments.append(stim.Circuit())
+            for edge in edges:
+                edge.append_mpp(out_circuit=out_moments[-1], q2i=self.q2i)
+        else:
+            measure_targets = [self.q2i[e.measurement_qubit] for e in edges]
+            out_moments.append(stim.Circuit())
+            out_moments[-1].append(f'R', measure_targets)
+            if edge_basis != 'Z':
+                out_moments[-1].append(f'H_{edge_basis}Z', data_targets)
+            out_moments.append(stim.Circuit())
+            out_moments[-1].append(f'CX', [
+                self.q2i[q]
+                for e in edges
+                if e.data_qubit_order[0] is not None
+                for q in [e.data_qubit_order[0], e.measurement_qubit]
+            ])
+            out_moments.append(stim.Circuit())
+            out_moments[-1].append(f'CX', [
+                self.q2i[q]
+                for e in edges
+                if e.data_qubit_order[1] is not None
+                for q in [e.data_qubit_order[1], e.measurement_qubit]
+            ])
+
+            out_moments.append(stim.Circuit())
+            out_moments[-1].append(f'M', measure_targets)
+            if edge_basis != 'Z':
+                out_moments[-1].append(f'H_{edge_basis}Z', data_targets)
+        added_measurements = [edge.measurement_qubit for edge in edges]
         self.tracker.add_measurements(*added_measurements)
 
         # Move logical observables.
@@ -267,11 +299,12 @@ def magical_obs_bell_measurement(*,
 
 def main():
     out_dir = pathlib.Path(__file__).parent.parent.parent.parent.parent / 'out'
-    layout = HoneycombLayout.from_code_distance(distance=10,
-                                                rounds=10,
-                                                noise_level=0.001,
-                                                noisy_gate_set='EM3_v1',
-                                                tested_observable='H')
+    layout = HoneycombLayout(data_width=32,
+                             data_height=48,
+                             rounds=10,
+                             noise_level=0.001,
+                             noisy_gate_set='SD6',
+                             tested_observable='V')
     edge_plan = layout.edge_plan
     hex_plan = layout.hex_plan
     plans = []
@@ -281,18 +314,23 @@ def main():
             elements=tuple([*hex_plan.elements, *edge_plan.elements]),
             observables=observable_plan.observables,
         ))
+
     with open(out_dir / 'tmp.svg', 'w') as f:
         print(StabilizerPlan.svg(*plans, show_order=False), file=f)
 
     circuit = layout.noisy_circuit()
+    with open(out_dir / 'circuit.stim', 'w') as f:
+        print(circuit, file=f)
     with open(out_dir / 'tmp.html', 'w') as f:
         print(stim_circuit_html_viewer(circuit=circuit, width=500, height=500), file=f)
-    error_model: stim.DetectorErrorModel = circuit.detector_error_model(decompose_errors=True)
+    error_model: stim.DetectorErrorModel = circuit.detector_error_model(decompose_errors=False)
 
-    shortest_error = error_model.shortest_graphlike_error()
-    print(f"graphlike code distance = {len(shortest_error)}")
+    shortest_error = error_model.shortest_graphlike_error(ignore_ungraphlike_errors=True)
+    with open(out_dir / 'filter.dem', 'w') as f:
+        print(shortest_error, file=f)
     for e in shortest_error:
         print("    ", e)
+    print(f"graphlike code distance = {len(shortest_error)}")
 
     # shortest_error_circuit = circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True)
     # print("Circuit equivalents")

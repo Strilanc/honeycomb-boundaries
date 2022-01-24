@@ -598,6 +598,10 @@ class HoneycombLayout:
     def data_qubits(self) -> Tuple[complex, ...]:
         return tuple(sorted(self.data_qubit_set, key=complex_key))
 
+    @functools.cached_property
+    def measurement_qubits(self) -> Tuple[complex, ...]:
+        return tuple(sorted(self.measurement_qubit_set, key=complex_key))
+
     def to_stabilizer_plan(self, layout_index: Optional[int]) -> StabilizerPlan:
         return StabilizerPlan(
             elements=tuple([*self.hex_plan.elements, *self.edge_plan.elements]),
