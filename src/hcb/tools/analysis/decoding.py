@@ -158,9 +158,9 @@ def decode_using_internal_decoder(circuit: stim.Circuit,
             with open(dem_file) as f:
                 with open(repro_output_path() / "repro_model.dem", "w") as f2:
                     print(f.read(), file=f2)
-            with open(dets_file) as f:
+            with open(dets_file, 'rb') as f:
                 with open(repro_output_path() / "repro_dets.b8", "wb") as f2:
-                    print(f.read(), file=f2)
+                    f2.write(f.read())
             with open(repro_output_path() / "repro_circuit.stim", "w") as f2:
                 print(circuit, file=f2)
             print(f"Wrote case to `repro.dem`, `repro.dets`, and `repro.stim`.\n"

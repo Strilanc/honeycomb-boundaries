@@ -18,16 +18,21 @@ def iter_problems(decoder: str) -> Iterator[DecodingProblem]:
         #         decoder=decoder,
         #     ).decoding_problem
 
-        for d in [2, 4, 6, 8, 10, 12]:
-            yield HoneycombLayout.from_code_distance(
-                noise=p,
-                distance=d,
-                rounds=d * 3,
-            ).to_decoding_problem(decoder=decoder)
+        for noisy_gate_set in ['EM3_v2', 'SD6','SI1000']:
+            for d in [2, 4, 6, 8, 10, 12]:
+                yield HoneycombLayout(
+                    data_width=d,
+                    data_height=(d // 2) * 3,
+                    noise_level=p,
+                    noisy_gate_set=noisy_gate_set,
+                    tested_observable='EPR',
+                    sheared=False,
+                    rounds=d * 3,
+                ).to_problem(decoder=decoder).decoding_problem
 
 
 def main():
-    data_file = pathlib.Path("../out/data_initial.csv").resolve()
+    data_file = pathlib.Path("../out/data_third.csv").resolve()
 
     collect_simulated_experiment_data(
         iter_problems(decoder="internal"),
@@ -35,7 +40,7 @@ def main():
         merge_mode="saturate",
         start_batch_size=2**8,
         max_batch_size=2**18,
-        max_shots=100_000,
+        max_shots=10_000_000,
         max_errors=1000,
         num_threads=8,
     )
