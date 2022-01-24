@@ -9,16 +9,16 @@ from hcb.tools.analysis.plotting import plot_data
 
 def iter_problems(decoder: str) -> Iterator[DecodingProblem]:
     for p in [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05][::-1]:
-        for d in [3, 5, 7]:
-            yield generate_surface_code_memory_problem(
-                noise=p,
-                distance=d,
-                rounds=d * 3,
-                basis="transversal_Z",
-                decoder=decoder,
-            ).decoding_problem
+        # for d in [3, 5, 7]:
+        #     yield generate_surface_code_memory_problem(
+        #         noise=p,
+        #         distance=d,
+        #         rounds=d * 3,
+        #         basis="transversal_Z",
+        #         decoder=decoder,
+        #     ).decoding_problem
 
-        for d in [4, 6, 8]:
+        for d in [2, 4, 6, 8, 10, 12]:
             yield HoneycombLayout.from_code_distance(
                 noise=p,
                 distance=d,
@@ -27,16 +27,16 @@ def iter_problems(decoder: str) -> Iterator[DecodingProblem]:
 
 
 def main():
-    data_file = pathlib.Path("../out/data.csv").resolve()
+    data_file = pathlib.Path("../out/data_initial.csv").resolve()
 
     collect_simulated_experiment_data(
         iter_problems(decoder="internal"),
         out_path=data_file,
-        merge_mode="replace",
+        merge_mode="saturate",
         start_batch_size=2**8,
         max_batch_size=2**18,
-        max_shots=10_000,
-        max_errors=100,
+        max_shots=100_000,
+        max_errors=1000,
         num_threads=8,
     )
 

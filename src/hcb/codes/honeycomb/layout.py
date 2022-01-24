@@ -1,17 +1,16 @@
 import collections
 import dataclasses
 import functools
-import pathlib
 from typing import List, Tuple, Iterable, FrozenSet, Optional, Dict, AbstractSet
 
 import stim
 
+from hcb.codes.surface.stabilizer_plan_problem import StabilizerPlanProblem
 from hcb.tools.analysis.collecting import DecodingProblem, DecodingProblemDesc
 from hcb.tools.gen.circuit_canvas import complex_key
 from hcb.tools.gen.measurement_tracker import MeasurementTracker, Prev
+from hcb.tools.gen.noise import NoiseModel
 from hcb.tools.gen.stabilizer_plan import StabilizerPlan, StabilizerPlanElement
-from hcb.tools.gen.viewer import stim_circuit_html_viewer
-
 
 HEX_DATA_OFFSETS = (
     0,
@@ -33,21 +32,91 @@ EDGE_BASIS_SEQUENCE = 'YXZ'
 EDGE_MEASUREMENT_SEQUENCE = 'XYZXZY'
 
 
-def find_hex_comparison(previous_measurements: str) -> Optional[Tuple[str, Tuple[Prev, ...]]]:
+@dataclasses.dataclass
+class ComparisonRule:
+    kind: str
+    filter_basis: str
+    last_measure_basis: str
+    product: Tuple[Prev, ...]
+
+
+INIT_COMPARISON_RULES: Dict[Tuple[Optional[str], str, Optional[str]], ComparisonRule] = {
+    ('X', 'X', None): ComparisonRule(
+        kind='edge',
+        filter_basis='X',
+        product=(Prev('X', 0),),
+        last_measure_basis='X',
+    ),
+    ('X', 'XYZ', None): ComparisonRule(
+        kind='hex',
+        filter_basis='X',
+        product=(Prev('Y', 0), Prev('Z', 0)),
+        last_measure_basis='Z',
+    ),
+    ('Y', 'XY', None): ComparisonRule(
+        kind='hex',
+        filter_basis='Z',
+        product=(Prev('Y', 0),),
+        last_measure_basis='Y',
+    ),
+    ('Y', 'XYZX', None): ComparisonRule(
+        kind='hex',
+        filter_basis='Y',
+        product=(Prev('X', 0), Prev('Z', 0)),
+        last_measure_basis='X',
+    ),
+}
+
+def comparisons_for_step(*,
+                         previous_measurements: str,
+                         data_init_basis: Optional[str],
+                         data_measure_basis: Optional[str]) -> Optional[ComparisonRule]:
+    """Determines sets of edge measurements to compare to get detectors at various times.
+
+    Args:
+        previous_measurements: The basis of each layer of edge measurements performed so far.
+        data_init_basis: The basis that data qubits of the patch were initially reset into.
+        data_measure_basis: The basis that data qubits of the patch were just measured in.
+            (Use None until the actual data measurement occurs.)
+
+    Returns:
+        A (stabilizer_basis, detector_parts) tuple.
+            stabilizer_basis: The color of hex this applies to. For example, after measuring X edges
+                then Y edges the basis will be 'Z' because those are the stabilizers that have been
+                formed again and can be compared to previous values.
+            detector_parts: A tuple of `Prev(edge_basis, lookback)` values, indicating which edges
+                at which time (around the border of each of the stabilizers) to multiply together
+                to get a deterministic result. Should include the current edge measurement.
+    """
+    # Special case timelike boundaries.
+    key = (data_init_basis, previous_measurements, data_measure_basis)
+    if key in INIT_COMPARISON_RULES:
+        return INIT_COMPARISON_RULES[key]
+
     if len(previous_measurements) < 2:
         return None
     def piece(pos: int) -> Prev:
         char = previous_measurements[pos]
         return Prev(char, offset=sum(c == char for c in previous_measurements[pos + 1:]))
+
+    # Look at current measurement pair.
     match = set(previous_measurements[-2:])
     remainder, = set('XYZ') - match
+
+    # Find the previous time this pair occurred next to each other.
     n = len(previous_measurements)
     for k in range(n - 2)[::-1]:
         if set(previous_measurements[k:k+2]) == match:
             pieces = set()
             for p in [piece(n-1), piece(n-2), piece(k), piece(k+1)]:
                 pieces ^= {p}
-            return remainder, tuple(sorted(pieces, key=lambda p: (p.v, p.offset)))
+            return ComparisonRule(
+                kind='hex',
+                filter_basis=remainder,
+                product=tuple(sorted(pieces, key=lambda p: (p.v, p.offset))),
+                last_measure_basis=previous_measurements[-1],
+            )
+
     return None
 
 
@@ -60,7 +129,9 @@ class HoneycombHex:
     def __post_init__(self):
         assert (self.top_left.real + self.top_left.imag) % 2 == 0
 
-    def leaf_basis(self, m2e: Dict[complex, StabilizerPlanElement]) -> str:
+    def leaf_basis(self, m2e: Dict[complex, StabilizerPlanElement]) -> Optional[str]:
+        if len(self.data_qubits) == 6:
+            return None
         result, = {m2e[m].common_basis() for m in self.measurement_qubits if m2e[m].is_leaf()}
         return result
 
@@ -93,23 +164,65 @@ class HoneycombHex:
 
 
 class HoneycombLayout:
-    def __init__(self, *, data_width: int, data_height: int, rounds: int, noise: float):
+    def __init__(self,
+                 *,
+                 data_width: int,
+                 data_height: int,
+                 rounds: int,
+                 noise_level: float,
+                 noisy_gate_set: str,
+                 tested_observable: str):
+        """
+        Args:
+            data_width: The left-to-right diameter of the patch.
+                Note that the patch is sheared. It has the same width at the top and at the bottom,
+                but the bottom is further to the right than the top.
+            data_height: The top-to-bottom diameter of the patch.
+            rounds: The number of times to measure each measurement qubits.
+                One round measures each edge once.
+                Must be at least 4 and even.
+                Note that rounds alternate between measuring X-then-Y-then-Z and X-then-Z-then-Y.
+            noise_level: The strength of noise added into circuit.
+            noisy_gate_set: The type of noisy gates available.
+            tested_observable: The observable to initialize and later measure. Valid values are:
+                "V": Fault-tolerantly initialize, protect, and measure the vertical observable.
+                "H": Fault-tolerantly initialize, protect, and measure the horizontal observable.
+                "EPR": Magically noiselessly initialize the logical qubit into a Bell pair entangled
+                    with a noiseless ancilla, protect both the horizontal and vertical logical
+                    observables against noise, then magically noiselessly perform a Bell basis
+                    measurement.
+
+                    This mode is useful for verifying that the two observables actually form a
+                    logical qubit, since if didn't anti-commute it would be impossible to correlate
+                    them both with the ancilla qubit's anti-commuting X and Z observables.
+        """
+        self.tested_observable = tested_observable
         self.data_width = data_width
         self.data_height = data_height
         self.rounds = rounds
-        self.noise = noise
+        self.noise_level = noise_level
+        self.noisy_gate_set = noisy_gate_set
+        assert self.tested_observable in ['V', 'H', 'EPR']
         assert self.data_width % 2 == 0
         assert self.data_height % 3 == 0
         assert self.data_width * 3 >= self.data_height
+        assert self.rounds % 2 == 0 and self.rounds >= 4
 
     @staticmethod
-    def from_code_distance(distance: int, rounds: int, noise: float):
+    def from_code_distance(*,
+                           distance: int,
+                           rounds: int,
+                           noise_level: float,
+                           noisy_gate_set: str,
+                           tested_observable: str):
         assert distance % 2 == 0
         return HoneycombLayout(
             data_width=distance,
             data_height=(distance // 2) * 3,
             rounds=rounds,
-            noise=noise)
+            noise_level=noise_level,
+            noisy_gate_set=noisy_gate_set,
+            tested_observable=tested_observable)
 
     @functools.cached_property
     def measurement_qubit_set(self) -> FrozenSet[complex]:
@@ -265,7 +378,7 @@ class HoneycombLayout:
         p = self.horizontal_observable_path
         return frozenset((p[k] + p[k + 1]) / 2 for k in range(len(p) - 1))
 
-    def vertical_observable(self, step: int) -> StabilizerPlanElement:
+    def vertical_observable(self, layout_index: int) -> StabilizerPlanElement:
         data_qubits = self.vertical_observable_path
         steps = [
             'X_X',
@@ -274,14 +387,14 @@ class HoneycombLayout:
             '_ZZ',
             '_YY',
         ]
-        bases = (steps[step] * len(data_qubits))[:len(data_qubits)]
+        bases = (steps[layout_index] * len(data_qubits))[:len(data_qubits)]
         return StabilizerPlanElement(
             bases=tuple('_' + bases[:-2] + '_'),
             data_qubit_order=data_qubits,
             measurement_qubit=data_qubits[0]
         )
 
-    def horizontal_observable(self, step: int) -> StabilizerPlanElement:
+    def horizontal_observable(self, layout_index: int) -> StabilizerPlanElement:
         data_qubits = self.horizontal_observable_path
         steps = [
             'ZZZZ',
@@ -290,7 +403,7 @@ class HoneycombLayout:
             '_XX_',
             'X__X',
         ]
-        bases = (steps[step] * len(data_qubits))[:len(data_qubits)]
+        bases = (steps[layout_index] * len(data_qubits))[:len(data_qubits)]
         return StabilizerPlanElement(
             bases=tuple('_' + bases[:-2] + '_'),
             data_qubit_order=data_qubits,
@@ -371,7 +484,7 @@ class HoneycombLayout:
             'Z': self.z_edges,
         }[basis]
 
-    def xyz_measurement_qubits(self, basis: str) -> FrozenSet[complex]:
+    def xyz_measurement_qubit_set(self, basis: str) -> FrozenSet[complex]:
         return {
             'X': self.x_measurement_qubits,
             'Y': self.y_measurement_qubits,
@@ -397,158 +510,127 @@ class HoneycombLayout:
             'Z': self.z_hex,
         }[basis]
 
-    def circuit(self) -> stim.Circuit:
-        circuit = stim.Circuit()
-        q2i = {q: i for i, q in enumerate(sorted(self.edge_plan.used_coords_set(), key=complex_key))}
-        epr_ancilla = -2
-        assert epr_ancilla not in q2i
-        q2i[epr_ancilla] = len(q2i)
-        for q, i in q2i.items():
-            circuit.append("QUBIT_COORDS", i, [q.real, q.imag])
-
-        target_xyz = {
-            'X': stim.target_x,
-            'Y': stim.target_y,
-            'Z': stim.target_z,
-        }
-        tracker = MeasurementTracker()
-        measured_bases = ''
-
-        def append_obs_measurement(obs: StabilizerPlanElement, index: int):
-            targets = []
-            for p, q in zip(obs.bases, obs.data_qubit_order):
-                assert p in '_XYZ'
-                if p != '_':
-                    targets.append(target_xyz[p](q2i[q]))
-                    targets.append(stim.target_combiner())
-            targets.append(target_xyz['XZ'[index]](q2i[epr_ancilla]))
-            circuit.append('MPP', targets)
-            circuit.append('OBSERVABLE_INCLUDE', stim.target_rec(-1), index)
-            circuit.append("TICK")
-
-        use_vertical_obs = True
-        use_horizontal_obs = True
-        if use_vertical_obs:
-            append_obs_measurement(self.vertical_observable(1), 0)
-        if use_horizontal_obs:
-            append_obs_measurement(self.horizontal_observable(1), 1)
-
-        for r in range(self.rounds):
-            for edge_basis in EDGE_MEASUREMENT_SEQUENCE:
-                noise = self.noise if r != 0 and r != self.rounds - 1 else 0
-                target = target_xyz[edge_basis]
-                added_measurements = []
-                for edge in self.xyz_edges(edge_basis).elements:
-                    edge: StabilizerPlanElement
-                    data_coords = edge.data_coords_set()
-                    targets = []
-                    ts = []
-                    for q in sorted(data_coords, key=complex_key):
-                        targets.append(target(q2i[q]))
-                        ts.append(q2i[q])
-                        targets.append(stim.target_combiner())
-                    targets.pop()
-                    circuit.append(f"DEPOLARIZE{len(ts)}", ts, noise)
-                    circuit.append("MPP", targets, noise)
-                    added_measurements.append(edge.measurement_qubit)
-                tracker.add_measurements(*added_measurements)
-                if edge_basis != 'X':
-                    if use_vertical_obs:
-                        circuit.append(
-                            "OBSERVABLE_INCLUDE",
-                            tracker.get_record_targets(*(set(added_measurements) & self.vertical_observable_measurement_qubit_set)),
-                            0)
-                    if use_horizontal_obs:
-                        circuit.append(
-                            "OBSERVABLE_INCLUDE",
-                            tracker.get_record_targets(*(set(added_measurements) & self.horizontal_observable_measurement_qubit_set)),
-                            1)
-
-                measured_bases += edge_basis
-                cmp = find_hex_comparison(measured_bases)
-                m2e = self.measure_to_element_dict
-                if cmp is not None:
-                    hex_basis, comparisons = cmp
-
-                    used_hexes = [*self.xyz_hex(hex_basis)] + [
-                        h
-                        for h in self.boundary_hex_set
-                        if h.leaf_basis(m2e) == measured_bases[-1] and h.basis == hex_basis
-                    ]
-                    for h in used_hexes:
-                        measurements = []
-                        for c in comparisons:
-                            for m in h.measurement_qubits:
-                                if m in self.xyz_measurement_qubits(c.v):
-                                    measurements.append(Prev(m, offset=c.offset))
-                        tracker.append_detector(
-                            *measurements,
-                            coords=[h.center.real, h.center.imag, 0],
-                            out_circuit=circuit,
-                        )
-
-                circuit.append("SHIFT_COORDS", [], [0, 0, 1])
-
-
-                circuit.append("TICK")
-
-        if use_vertical_obs:
-            append_obs_measurement(self.vertical_observable(1), 0)
-        if use_horizontal_obs:
-            append_obs_measurement(self.horizontal_observable(1), 1)
-
-
-        return circuit
-
-    def to_decoding_problem(self, decoder: str) -> DecodingProblem:
-        return DecodingProblem(
-            circuit_maker=self.circuit,
-            desc=DecodingProblemDesc(
-                data_width=self.data_width,
-                data_height=self.data_height,
-                code_distance=min(self.data_width, self.data_height // 3 * 2),
-                num_qubits=len(self.all_qubits_set),
-                rounds=self.rounds,
-                noise=self.noise,
-                circuit_style=f"bounded_honeycomb_memory",
-                preserved_observable="EPR",
-                decoder=decoder,
-            )
+    def append_hex_based_detector(self,
+                                  h: HoneycombHex,
+                                  *,
+                                  comparison_rule_product: Tuple[Prev, ...],
+                                  out_circuit: stim.Circuit,
+                                  include_data_qubits: bool,
+                                  tracker: MeasurementTracker):
+        tracker.append_detector(
+            *[
+                Prev(m, offset=c.offset)
+                for c in comparison_rule_product
+                for m in set(h.measurement_qubits) & self.xyz_measurement_qubit_set(c.v)
+            ],
+            *(h.data_qubits * include_data_qubits),
+            coords=[h.center.real, h.center.imag, 0],
+            out_circuit=out_circuit,
         )
 
+    def append_step_detectors(self, *,
+                              cmp: Optional[ComparisonRule],
+                              out_circuit: stim.Circuit,
+                              tracker: MeasurementTracker):
+        if cmp is None:
+            return
 
-def main():
-    out_dir = pathlib.Path(__file__).parent.parent.parent.parent.parent / 'out'
-    layout = HoneycombLayout.from_code_distance(distance=6,
-                                                rounds=10,
-                                                noise=0.001)
-    edge_plan = layout.edge_plan
-    hex_plan = layout.hex_plan
-    plans = []
-    for step in range(5):
-        observable_plan = layout.observable_plan(step)
-        plans.append(StabilizerPlan(
-            elements=tuple([*hex_plan.elements, *edge_plan.elements]),
-            observables=observable_plan.observables))
-    with open(out_dir / 'tmp.svg', 'w') as f:
-        print(StabilizerPlan.svg(*plans, show_order=False), file=f)
+        if cmp.kind == 'edge':
+            assert cmp.product == (Prev(cmp.filter_basis, 0),)
+            for edge in self.xyz_edges(cmp.filter_basis).elements:
+                m = edge.measurement_qubit
+                tracker.append_detector(
+                    m,
+                    coords=[m.real, m.imag, 0],
+                    out_circuit=out_circuit,
+                )
+            return
+        elif cmp.kind == 'hex':
+            m2e = self.measure_to_element_dict
 
-    circuit = layout.circuit()
-    with open(out_dir / 'tmp.html', 'w') as f:
-        print(stim_circuit_html_viewer(circuit=circuit, width=500, height=500), file=f)
-    error_model: stim.DetectorErrorModel = circuit.detector_error_model(decompose_errors=True)
+            used_hexes = [*self.xyz_hex(cmp.filter_basis)] + [
+                h
+                for h in self.boundary_hex_set
+                if h.leaf_basis(m2e) == cmp.last_measure_basis and h.basis == cmp.filter_basis
+            ]
+            for h in used_hexes:
+                self.append_hex_based_detector(
+                    h,
+                    comparison_rule_product=cmp.product,
+                    out_circuit=out_circuit,
+                    tracker=tracker,
+                    include_data_qubits=False,
+                )
+        else:
+            raise NotImplementedError(f'{cmp=!r}')
 
-    shortest_error = error_model.shortest_graphlike_error()
-    print(f"graphlike code distance = {len(shortest_error)}")
-    for e in shortest_error:
-        print("    ", e)
+    @functools.cached_property
+    def time_boundary_data_basis(self) -> Optional[str]:
+        if self.tested_observable == 'V':
+            return 'X'
+        if self.tested_observable  == 'H':
+            return 'Y'
+        if self.tested_observable == 'EPR':
+            return None
+        raise NotImplementedError(f'{self.tested_observable=!r}')
 
-    # shortest_error_circuit = circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True)
-    # print("Circuit equivalents")
-    # for e in shortest_error_circuit:
-    #     print("    " + e.replace('\n', '\n    '))
-    # print(f"graphlike code distance = {len(shortest_error)}")
+    @functools.cached_property
+    def use_vertical_obs(self) -> bool:
+        if self.tested_observable == 'V':
+            return True
+        if self.tested_observable  == 'H':
+            return False
+        if self.tested_observable == 'EPR':
+            return True
+        raise NotImplementedError(f'{self.tested_observable=!r}')
 
+    @functools.cached_property
+    def use_horizontal_obs(self) -> bool:
+        if self.tested_observable == 'V':
+            return False
+        if self.tested_observable  == 'H':
+            return True
+        if self.tested_observable == 'EPR':
+            return True
+        raise NotImplementedError(f'{self.tested_observable=!r}')
 
-if __name__ == '__main__':
-    main()
+    @functools.cached_property
+    def data_qubits(self) -> Tuple[complex, ...]:
+        return tuple(sorted(self.data_qubit_set, key=complex_key))
+
+    def to_stabilizer_plan(self, layout_index: Optional[int]) -> StabilizerPlan:
+        return StabilizerPlan(
+            elements=tuple([*self.hex_plan.elements, *self.edge_plan.elements]),
+            observables=() if layout_index is None else self.observable_plan(layout_index),
+        )
+
+    def noisy_circuit(self) -> stim.Circuit:
+        from hcb.codes.honeycomb.circuit_maker import HoneycombCircuitMaker
+        maker = HoneycombCircuitMaker(layout=self)
+        maker.process()
+        return maker.final_noisy_circuit()
+
+    def to_problem(self, *, decoder: str) -> StabilizerPlanProblem:
+        from hcb.codes.honeycomb.circuit_maker import HoneycombCircuitMaker
+        maker = HoneycombCircuitMaker(layout=self)
+        maker.process()
+        noisy_circuit = maker.final_noisy_circuit()
+        return StabilizerPlanProblem(
+            ideal_circuit=maker.final_ideal_circuit(),
+            noisy_circuit=noisy_circuit,
+            all_layouts=tuple(self.to_stabilizer_plan(k) for k in range(5)),
+            decoding_problem=DecodingProblem(
+                circuit_maker=lambda: noisy_circuit,
+                desc=DecodingProblemDesc(
+                    data_width=self.data_width,
+                    data_height=self.data_height,
+                    code_distance=min(self.data_width, self.data_height // 3 * 2),
+                    num_qubits=len(self.all_qubits_set),
+                    rounds=self.rounds,
+                    noise=self.noise_level,
+                    circuit_style=f"bounded_honeycomb_memory_{self.noisy_gate_set}",
+                    preserved_observable="EPR",
+                    decoder=decoder,
+                )
+            ),
+        )

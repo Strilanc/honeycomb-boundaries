@@ -79,7 +79,7 @@ def generate_surface_code_memory_problem(*,
         tail.clear()
     ideal_circuit = head + body + tail
     noisy_qubits = {i for q, i in q2i.items() if q != EPR_ANCILLA_LOC}
-    noisy_circuit = head + NoiseModel.StandardDepolarizing(noise).noisy_circuit(body, qs=noisy_qubits) + tail
+    noisy_circuit = head + NoiseModel.SD6(noise).noisy_circuit(body, qs=noisy_qubits) + tail
 
     decoding_problem = DecodingProblem(
         circuit_maker=lambda: noisy_circuit,

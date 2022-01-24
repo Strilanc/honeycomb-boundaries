@@ -1,7 +1,6 @@
 import dataclasses
-import dataclasses
 import math
-from typing import List, Tuple, Dict, Iterable, Optional, Set, Any, Sequence, AbstractSet
+from typing import List, Tuple, Dict, Iterable, Optional, Set, Any, AbstractSet
 
 import stim
 
@@ -86,6 +85,13 @@ class StabilizerPlanElement:
             bases=self.bases,
             measurement_qubit=self.measurement_qubit + offset,
             data_qubit_order=tuple(e + offset for e in self.data_qubit_order),
+        )
+
+    def xyz_data_coords(self) -> Tuple[complex, ...]:
+        return tuple(
+            q
+            for b, q in zip(self.bases, self.data_qubit_order)
+            if b in 'XYZ'
         )
 
     def append_mpp(self, *, out_circuit: stim.Circuit, q2i: Dict[complex, int], noise: float = 0):

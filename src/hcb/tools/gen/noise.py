@@ -1,14 +1,13 @@
 import dataclasses
-from typing import Optional, Dict, Set, Tuple
+from typing import Optional, Dict, Set, Tuple, Sequence, List
 
 import stim
 
 ANY_CLIFFORD_1_OPS = {"C_XYZ", "C_ZYX", "H", "H_YZ", "I"}
-ANY_CLIFFORD_2_OPS = {"CX", "CY", "CZ", "XCX", "XCY", "XCZ", "YCX", "YCY", "YCZ", "SWAP"}
+ANY_CLIFFORD_2_OPS = {"CX", "CY", "CZ", "XCX", "XCY", "XCZ", "YCX", "YCY", "YCZ"}
 RESET_OPS = {"R", "RX", "RY"}
 MEASURE_OPS = {"M", "MX", "MY"}
 ANNOTATION_OPS = {"OBSERVABLE_INCLUDE", "DETECTOR", "SHIFT_COORDS", "QUBIT_COORDS", "TICK"}
-EXPLICIT_NOISE_OPS = {"DEPOLARIZE1", "DEPOLARIZE2", "X_ERROR", "Y_ERROR", "Z_ERROR"}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -21,20 +20,75 @@ class NoiseModel:
     use_correlated_parity_measurement_errors: bool = False
 
     @staticmethod
-    def StandardDepolarizing(p: float) -> 'NoiseModel':
+    def SD6(p: float) -> 'NoiseModel':
         return NoiseModel(
             any_clifford_1=p,
             idle=p,
             measure_reset_idle=0,
             noisy_gates={
                 "CX": p,
-                "SWAP": p,
                 "R": p,
                 "M": p,
             },
         )
 
-    def noisy_op(self, op: stim.CircuitInstruction, p: float) -> Tuple[stim.Circuit, stim.Circuit, stim.Circuit]:
+    @staticmethod
+    def PC3(p: float) -> 'NoiseModel':
+        return NoiseModel(
+            any_clifford_1=p,
+            any_clifford_2=p,
+            idle=p,
+            measure_reset_idle=0,
+            noisy_gates={
+                "R": p,
+                "M": p,
+            },
+        )
+
+    @staticmethod
+    def EM3_v1(p: float) -> 'NoiseModel':
+        """EM3 but with measurement flip errors independent of measurement target depolarization error."""
+        return NoiseModel(
+            idle=p,
+            measure_reset_idle=0,
+            any_clifford_1=p,
+            noisy_gates={
+                "R": p,
+                "M": p,
+                "MPP": p,
+            },
+        )
+
+    @staticmethod
+    def EM3_v2(p: float) -> 'NoiseModel':
+        """EM3 with measurement flip errors correlated with measurement target depolarization error."""
+        return NoiseModel(
+            any_clifford_1=0,
+            any_clifford_2=0,
+            idle=p,
+            measure_reset_idle=0,
+            use_correlated_parity_measurement_errors=True,
+            noisy_gates={
+                "R": p/2,
+                "M": p/2,
+                "MPP": p,
+            },
+        )
+
+    @staticmethod
+    def SI1000(p: float) -> 'NoiseModel':
+        return NoiseModel(
+            any_clifford_1=p / 10,
+            idle=p / 10,
+            measure_reset_idle=2 * p,
+            noisy_gates={
+                "CZ": p,
+                "R": 2 * p,
+                "M": 5 * p,
+            },
+        )
+
+    def noisy_op(self, op: stim.CircuitInstruction, p: float, ancilla: int) -> Tuple[stim.Circuit, stim.Circuit, stim.Circuit]:
         pre = stim.Circuit()
         mid = stim.Circuit()
         post = stim.Circuit()
@@ -50,13 +104,49 @@ class NoiseModel:
                     post.append_operation("Z_ERROR" if op.name.endswith("X") else "X_ERROR", targets, p)
                 if op.name in MEASURE_OPS:
                     pre.append_operation("Z_ERROR" if op.name.endswith("X") else "X_ERROR", targets, p)
+            elif op.name == "MPP":
+                groups = group_mpp_targets(targets)
+                assert all(len(g) in [1, 2] for g in groups)
+                assert args == [] or args == [0]
+
+                if self.use_correlated_parity_measurement_errors:
+                    for g in groups:
+                        if len(g) == 2:
+                            a, b = g
+                            mid += parity_measurement_with_correlated_measurement_noise(
+                                t1=a,
+                                t2=b,
+                                ancilla=ancilla,
+                                mix_probability=p)
+                        else:
+                            assert len(g) == 1
+                            if g[0].is_x_target:
+                                pre.append_operation("Z_ERROR", g[0].value, p)
+                            else:
+                                pre.append_operation("X_ERROR", g[0].value, p)
+                            mid.append_operation("MPP", g, p)
+                    return pre, mid, post
+                else:
+                    singlets = [t.value for g in groups if len(g) == 1 for t in g]
+                    pairs = [t.value for g in groups if len(g) == 2 for t in g]
+                    if singlets:
+                        pre.append_operation("DEPOLARIZE1", singlets, p)
+                    if pairs:
+                        pre.append_operation("DEPOLARIZE2", pairs, p)
+                    args = [p]
+
             else:
                 raise NotImplementedError(repr(op))
         mid.append_operation(op.name, targets, args)
         return pre, mid, post
 
-    def noisy_circuit(self, circuit: stim.Circuit, *, qs: Optional[Set[int]] = None) -> stim.Circuit:
+    def noisy_circuit(self,
+                      circuit: stim.Circuit,
+                      *,
+                      qs: Optional[Set[int]] = None,
+                      ) -> stim.Circuit:
         result = stim.Circuit()
+        ancilla = circuit.num_qubits + 10
 
         current_moment_pre = stim.Circuit()
         current_moment_mid = stim.Circuit()
@@ -96,7 +186,7 @@ class NoiseModel:
             elif isinstance(op, stim.CircuitInstruction):
                 if op.name == "TICK":
                     flush()
-                    result.append_operation("TICK")
+                    result.append_operation("TICK", [])
                     continue
 
                 if op.name in self.noisy_gates:
@@ -107,11 +197,9 @@ class NoiseModel:
                     p = self.any_clifford_2
                 elif op.name in ANNOTATION_OPS:
                     p = 0
-                elif op.name in EXPLICIT_NOISE_OPS:
-                    p = 0
                 else:
                     raise NotImplementedError(repr(op))
-                pre, mid, post = self.noisy_op(op, p)
+                pre, mid, post = self.noisy_op(op, p, ancilla)
                 current_moment_pre += pre
                 current_moment_mid += mid
                 current_moment_post += post
@@ -124,8 +212,7 @@ class NoiseModel:
                 }
                 if op.name in ANNOTATION_OPS:
                     touched_qubits.clear()
-                # Hack: turn off this assertion off for now since correlated errors are built into circuit.
-                #assert touched_qubits.isdisjoint(used_qubits), repr(current_moment_pre + current_moment_mid + current_moment_post)
+                assert touched_qubits.isdisjoint(used_qubits), "OVERLAPPING OPERATIONS IN:\n" + repr(current_moment_pre + current_moment_mid + current_moment_post)
                 used_qubits |= touched_qubits
                 if op.name in MEASURE_OPS or op.name in RESET_OPS:
                     measured_or_reset_qubits |= touched_qubits
@@ -208,3 +295,15 @@ def parity_measurement_with_correlated_measurement_noise(
     circuit.append_operation('M', [ancilla])
 
     return circuit
+
+
+def group_mpp_targets(targets: Sequence[stim.GateTarget]) -> List[List[stim.GateTarget]]:
+    groups = []
+    start = 0
+    while start < len(targets):
+        end = start + 1
+        while end < len(targets) and targets[end].is_combiner:
+            end += 2
+        groups.append(list(targets[start:end:2]))
+        start = end
+    return groups

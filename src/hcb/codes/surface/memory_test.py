@@ -1,11 +1,11 @@
 import stim
 
-from hcb.codes.memory import generate_memory_problem
+from hcb.codes import generate_surface_code_memory_problem
 from hcb.tools.analysis.collecting import DecodingProblemDesc
 
 
-def test_generate_memory_problem_transversal_Z():
-    problem = generate_memory_problem(
+def test_generate_surface_code_memory_problem_transversal_Z():
+    problem = generate_surface_code_memory_problem(
         distance=3,
         rounds=12,
         noise=0.001,
@@ -21,7 +21,7 @@ def test_generate_memory_problem_transversal_Z():
         num_qubits=17,
         rounds=12,
         noise=0.001,
-        circuit_style='memory',
+        circuit_style='surface_code_memory',
         preserved_observable='transversal_Z',
         decoder='pymatching',
     )
@@ -29,8 +29,8 @@ def test_generate_memory_problem_transversal_Z():
     assert 900 < problem.sample_correct_count(1000) < 1000
 
 
-def test_generate_memory_problem_transversal_X():
-    problem = generate_memory_problem(
+def test_generate_surface_code_memory_problem_transversal_X():
+    problem = generate_surface_code_memory_problem(
         distance=3,
         rounds=12,
         noise=0.001,
@@ -46,15 +46,15 @@ def test_generate_memory_problem_transversal_X():
         num_qubits=17,
         rounds=12,
         noise=0.001,
-        circuit_style='memory',
+        circuit_style='surface_code_memory',
         preserved_observable='transversal_X',
         decoder='pymatching',
     )
     assert 900 < problem.sample_correct_count(1000) < 1000
 
 
-def test_generate_memory_problem_frayed_EPR_XX_ZZ():
-    problem = generate_memory_problem(
+def test_generate_surface_code_memory_problem_frayed_EPR_XX_ZZ():
+    problem = generate_surface_code_memory_problem(
         distance=3,
         rounds=12,
         noise=0.001,
@@ -71,15 +71,15 @@ def test_generate_memory_problem_frayed_EPR_XX_ZZ():
         num_qubits=18,
         rounds=12,
         noise=0.001,
-        circuit_style='memory',
+        circuit_style='surface_code_memory',
         preserved_observable='frayed_EPR_XX_ZZ',
         decoder='pymatching',
     )
     assert 900 < problem.sample_correct_count(1000) < 1000
 
 
-def test_generate_memory_problem_frayed_Y():
-    problem = generate_memory_problem(
+def test_generate_surface_code_memory_problem_frayed_Y():
+    problem = generate_surface_code_memory_problem(
         distance=3,
         rounds=12,
         noise=0.001,
@@ -95,7 +95,7 @@ def test_generate_memory_problem_frayed_Y():
         num_qubits=17,
         rounds=12,
         noise=0.001,
-        circuit_style='memory',
+        circuit_style='surface_code_memory',
         preserved_observable='frayed_Y',
         decoder='pymatching',
     )
@@ -103,7 +103,7 @@ def test_generate_memory_problem_frayed_Y():
 
 
 def test_generate_memory_exact_circuit():
-    assert generate_memory_problem(
+    assert generate_surface_code_memory_problem(
         distance=3,
         rounds=12,
         noise=0.001,

@@ -1,8 +1,8 @@
 import stim
 
+from hcb.codes.surface.layout import rect_surface_code_plan, AllObservableLocations, SingleObservableLocation, \
+    rect_surface_code_observables, rect_surface_code_init_circuit, EPR_ANCILLA_LOC
 from hcb.tools.gen.circuit_canvas import indexed_qubits_circuit_dict
-from hcb.tools.gen.surface_code import rect_surface_code_observables, rect_surface_code_plan, AllObservableLocations, \
-    SingleObservableLocation, rect_surface_code_init_circuit, EPR_ANCILLA_LOC
 from hcb.tools.gen.measurement_tracker import MeasurementTracker
 
 
