@@ -6,7 +6,7 @@ import stim
 from hcb.codes.honeycomb.layout import (
     HoneycombLayout,
     comparisons_for_step,
-    EDGE_MEASUREMENT_SEQUENCE,
+    EDGE_MEASUREMENT_SEQUENCE, checkerboard_type, SI1000_DATA_ROTATION_SEQUENCE,
 )
 from hcb.tools.gen.circuit_canvas import complex_key
 from hcb.tools.gen.measurement_tracker import MeasurementTracker, Prev
@@ -16,6 +16,13 @@ from hcb.tools.gen.viewer import stim_circuit_html_viewer
 
 
 EPR_ANCILLA: complex = -2
+
+
+def rotation_op(old_basis: str, next_basis: str) -> str:
+    if old_basis == next_basis:
+        return 'I'
+    suffix = ''.join(sorted([old_basis, next_basis]))
+    return f'H_{suffix}'
 
 
 def complex_key_prefer_ints(c: complex) -> Any:
@@ -35,8 +42,10 @@ class HoneycombCircuitMaker:
     def process(self):
         if self.layout.noisy_gate_set.startswith('EM3'):
             used_qubits = self.layout.edge_plan.data_coords_set()
-        else:
+        elif self.layout.noisy_gate_set in ['SD6', 'SI1000']:
             used_qubits = self.layout.edge_plan.used_coords_set()
+        else:
+            raise NotImplementedError()
         self.q2i = {q: i for i, q in enumerate(sorted(used_qubits, key=complex_key_prefer_ints))}
         if self.layout.tested_observable == 'EPR':
             assert EPR_ANCILLA not in self.q2i
@@ -132,36 +141,46 @@ class HoneycombCircuitMaker:
         self.moments[1].append(f"H_{self.layout.time_boundary_data_basis}Z", data_targets)
 
     def append_round_pair(self, *, out_moments: List[stim.Circuit]):
-        for edge_basis in EDGE_MEASUREMENT_SEQUENCE:
-            self.append_edge_layer(out_moments=out_moments,
-                                   edge_basis=edge_basis)
-            out_moments[-1].append_operation("SHIFT_COORDS", [], [0, 0, 1])
-
-    def append_edge_layer(self, *, out_moments: List[stim.Circuit], edge_basis: str):
-        self.measured_bases += edge_basis
-
-        # Perform edge measurements.
-        data_targets = [self.q2i[q] for q in self.layout.data_qubits]
-        edges = self.layout.xyz_edges(edge_basis).elements
-        if self.layout.noisy_gate_set.startswith('EM'):
-            out_moments.append(stim.Circuit())
-            for edge in edges:
-                edge.append_mpp(out_circuit=out_moments[-1], q2i=self.q2i)
+        if self.layout.noisy_gate_set.startswith('EM3'):
+            self.append_em_round_pair(out_moments=out_moments)
+        elif self.layout.noisy_gate_set == 'SD6':
+            self.append_sd6_round_pair(out_moments=out_moments)
+        elif self.layout.noisy_gate_set == 'SI1000':
+            self.append_si1000_round_pair(out_moments=out_moments)
         else:
-            measure_targets = [self.q2i[e.measurement_qubit] for e in edges]
+            raise NotImplementedError(f'{self.layout.noisy_gate_set}')
+
+    def append_em_round_pair(self, *, out_moments: List[stim.Circuit]):
+        for edge_basis in EDGE_MEASUREMENT_SEQUENCE:
             out_moments.append(stim.Circuit())
-            out_moments[-1].append(f'R', measure_targets)
+            for edge in self.layout.xyz_edges(edge_basis).elements:
+                edge.append_mpp(out_circuit=out_moments[-1], q2i=self.q2i)
+            self.finish_edge_measurements(
+                edge_basis=edge_basis,
+                out_moments=out_moments,
+                add_operations=False)
+
+    def append_sd6_round_pair(self, *, out_moments: List[stim.Circuit]):
+        data_targets = [self.q2i[q] for q in self.layout.data_qubits]
+        for edge_basis in EDGE_MEASUREMENT_SEQUENCE:
+            edges = self.layout.xyz_edges(edge_basis).elements
+            measure_targets = [self.q2i[e.measurement_qubit] for e in edges]
+
+            out_moments.append(stim.Circuit())
+            out_moments[-1].append('R', measure_targets)
             if edge_basis != 'Z':
                 out_moments[-1].append(f'H_{edge_basis}Z', data_targets)
+
             out_moments.append(stim.Circuit())
-            out_moments[-1].append(f'CX', [
+            out_moments[-1].append('CX', [
                 self.q2i[q]
                 for e in edges
                 if e.data_qubit_order[0] is not None
                 for q in [e.data_qubit_order[0], e.measurement_qubit]
             ])
+
             out_moments.append(stim.Circuit())
-            out_moments[-1].append(f'CX', [
+            out_moments[-1].append('CX', [
                 self.q2i[q]
                 for e in edges
                 if e.data_qubit_order[1] is not None
@@ -169,10 +188,73 @@ class HoneycombCircuitMaker:
             ])
 
             out_moments.append(stim.Circuit())
-            out_moments[-1].append(f'M', measure_targets)
             if edge_basis != 'Z':
                 out_moments[-1].append(f'H_{edge_basis}Z', data_targets)
-        added_measurements = [edge.measurement_qubit for edge in edges]
+            self.finish_edge_measurements(edge_basis=edge_basis,
+                                          out_moments=out_moments,
+                                          add_operations=True)
+
+    def append_si1000_round_pair(self, *, out_moments: List[stim.Circuit]):
+        data_targets = [self.q2i[q] for q in self.layout.data_qubits]
+        data_targets_0 = [self.q2i[q] for q in self.layout.data_qubits if not checkerboard_type(q)]
+        data_targets_1 = [self.q2i[q] for q in self.layout.data_qubits if checkerboard_type(q)]
+        parts = [EDGE_MEASUREMENT_SEQUENCE[:3], EDGE_MEASUREMENT_SEQUENCE[3:]]
+        all_measure_targets = [self.q2i[q] for q in self.layout.measurement_qubits]
+
+        def cz_layer(*, basis: str, parity: int) -> stim.Circuit:
+            layer = stim.Circuit()
+            layer.append('CZ', [
+                self.q2i[q]
+                for e in self.layout.xyz_edges(basis).elements
+                if e.data_qubit_order[parity] is not None
+                for q in [e.data_qubit_order[parity], e.measurement_qubit]
+            ])
+            return layer
+
+        for (a, b, c), (r_a, rab, rbc, rc_) in zip(parts, SI1000_DATA_ROTATION_SEQUENCE):
+            out_moments.append(stim.Circuit())
+            out_moments[-1].append('R', all_measure_targets)
+
+            out_moments.append(stim.Circuit())
+            out_moments[-1].append('H', all_measure_targets)
+            if r_a != 'I':
+                out_moments[-1].append(r_a, data_targets)
+
+            out_moments.append(cz_layer(basis=a, parity=0))
+
+            out_moments.append(cz_layer(basis=a, parity=1))
+            out_moments[-1].append(rab, data_targets_0)
+
+            out_moments.append(cz_layer(basis=b, parity=0))
+            out_moments[-1].append(rab, data_targets_1)
+
+            out_moments.append(cz_layer(basis=b, parity=1))
+            out_moments[-1].append(rbc, data_targets_0)
+
+            out_moments.append(cz_layer(basis=c, parity=0))
+            out_moments[-1].append(rbc, data_targets_1)
+
+            out_moments.append(cz_layer(basis=c, parity=1))
+
+            out_moments.append(stim.Circuit())
+            out_moments[-1].append('H', all_measure_targets)
+            if rc_ != 'I':
+                out_moments[-1].append(rc_, data_targets)
+
+            out_moments.append(stim.Circuit())
+            for edge_basis in a, b, c:
+                self.finish_edge_measurements(edge_basis=edge_basis,
+                                              out_moments=out_moments,
+                                              add_operations=True)
+
+    def finish_edge_measurements(self,
+                                 *,
+                                 edge_basis: str,
+                                 out_moments: List[stim.Circuit],
+                                 add_operations: bool):
+        added_measurements = [edge.measurement_qubit for edge in self.layout.xyz_edges(edge_basis).elements]
+        if add_operations:
+            out_moments[-1].append('M', [self.q2i[q] for q in added_measurements])
         self.tracker.add_measurements(*added_measurements)
 
         # Move logical observables.
@@ -191,6 +273,7 @@ class HoneycombCircuitMaker:
                     1)
 
         # Compare to previous measurements when possible.
+        self.measured_bases += edge_basis
         self.layout.append_step_detectors(
             cmp=comparisons_for_step(
                 previous_measurements=self.measured_bases,
@@ -200,6 +283,7 @@ class HoneycombCircuitMaker:
             out_circuit=out_moments[-1],
             tracker=self.tracker,
         )
+        out_moments[-1].append("SHIFT_COORDS", [], [0, 0, 1])
 
     def append_round_pair_measure(self):
         layout = self.layout
@@ -300,11 +384,11 @@ def magical_obs_bell_measurement(*,
 def main():
     out_dir = pathlib.Path(__file__).parent.parent.parent.parent.parent / 'out'
     layout = HoneycombLayout(data_width=8,
-                             data_height=15,
+                             data_height=12,
                              rounds=10,
                              noise_level=0.001,
-                             noisy_gate_set='SD6',
-                             tested_observable='EPR',
+                             noisy_gate_set='SI1000',
+                             tested_observable='H',
                              sheared=False)
     edge_plan = layout.edge_plan
     hex_plan = layout.hex_plan

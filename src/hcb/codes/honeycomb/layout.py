@@ -29,6 +29,20 @@ HEX_MEASURE_OFFSETS = (
 )
 EDGE_BASIS_SEQUENCE = 'YXZ'
 EDGE_MEASUREMENT_SEQUENCE = 'XYZXZY'
+SI1000_DATA_ROTATION_SEQUENCE: Tuple[Tuple[str, str, str, str], Tuple[str, str, str, str]] = (
+    (
+        'C_ZYX',
+        'C_ZYX',
+        'C_ZYX',
+        'I',
+    ),
+    (
+        'C_ZYX',
+        'C_XYZ',
+        'C_XYZ',
+        'C_ZYX',
+    ),
+)
 
 
 @dataclasses.dataclass
@@ -65,6 +79,19 @@ INIT_COMPARISON_RULES: Dict[Tuple[Optional[str], str, Optional[str]], Comparison
         last_measure_basis='X',
     ),
 }
+
+def checkerboard_type(a: complex) -> bool:
+    return (a.real + a.imag) % 2 == 1
+
+
+def data_checkerboard_sort(a: complex, b: complex) -> Tuple[complex, complex]:
+    a0 = checkerboard_type(a)
+    b0 = checkerboard_type(b)
+    assert a0 != b0
+    if a0 > b0:
+        a, b = b, a
+    return a, b
+
 
 OSCILLATING_BOUNDARY_OFFSETS = {
     0: -0.25,
@@ -289,7 +316,7 @@ class HoneycombLayout:
                 elements.append(StabilizerPlanElement(
                     bases=(h_basis,) * 2,
                     measurement_qubit=c + 0.5j,
-                    data_qubit_order=(
+                    data_qubit_order=data_checkerboard_sort(
                         c,
                         c + 1j,
                     ),
@@ -301,7 +328,7 @@ class HoneycombLayout:
                     elements.append(StabilizerPlanElement(
                         bases=(v_basis,) * 2,
                         measurement_qubit=c + 0.5,
-                        data_qubit_order=(
+                        data_qubit_order=data_checkerboard_sort(
                             c,
                             c + 1,
                         ),
@@ -346,14 +373,7 @@ class HoneycombLayout:
                 q if data_qubit_measure_count[q] == 3 else None
                 for q in e.data_qubit_order
             )
-            if not any(e is not None for e in dqs):
-                print("AHHHHHHHHHHH")
-                print("AHHHHHHHHHHH")
-                print("AHHHHHHHHHHH")
-                print("AHHHHHHHHHHH")
-                print("AHHHHHHHHHHH")
-                continue
-                # assert any(e is not None for e in dqs)
+            assert any(e is not None for e in dqs)
             truncated_elements.append(StabilizerPlanElement(
                 bases=e.bases,
                 measurement_qubit=e.measurement_qubit,
@@ -666,7 +686,10 @@ class HoneycombLayout:
         from hcb.codes.honeycomb.circuit_maker import HoneycombCircuitMaker
         maker = HoneycombCircuitMaker(layout=self)
         maker.process()
-        noisy_circuit = maker.final_noisy_circuit()
+
+        # Hack: get consistent result by working around not fusing during circuit concatenation.
+        noisy_circuit = stim.Circuit(str(maker.final_noisy_circuit()))
+
         return StabilizerPlanProblem(
             ideal_circuit=maker.final_ideal_circuit(),
             noisy_circuit=noisy_circuit,

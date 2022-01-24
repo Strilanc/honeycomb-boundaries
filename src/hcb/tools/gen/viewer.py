@@ -43,6 +43,8 @@ def _init_gate_box_labels() -> Dict[str, GateStyle]:
         name = name.replace("_DAG", "⁻¹")
         a, b = name.split("_") if "_" in name else (name, "")
         result[name] = GateStyle(label=a + b.lower(), fill_color='yellow', text_color='black')
+    for name in ["C_XYZ", "C_ZYX"]:
+        result[name] = GateStyle(label=name[0] + name[2:].lower(), fill_color='teal', text_color='black')
     return result
 
 GATE_BOX_LABELS = _init_gate_box_labels()
