@@ -137,6 +137,8 @@ class HoneycombCircuitMaker:
         data_targets = [self.q2i[q] for q in self.layout.data_qubits]
         if self.layout.noisy_gate_set == 'SD6':
             self.append_round_pair(out_moments=self.moments, loc='init')
+        elif self.layout.noisy_gate_set == 'SI1000':
+            self.append_round_pair(out_moments=self.moments, loc='init')
         else:
             self.moments.append(stim.Circuit())
             self.moments[0].append("R", data_targets)
@@ -150,7 +152,7 @@ class HoneycombCircuitMaker:
         elif self.layout.noisy_gate_set == 'SD6':
             self.append_sd6_round_pair(out_moments=out_moments, loc=loc)
         elif self.layout.noisy_gate_set == 'SI1000':
-            self.append_si1000_round_pair(out_moments=out_moments)
+            self.append_si1000_round_pair(out_moments=out_moments, loc=loc)
         else:
             raise NotImplementedError(f'{self.layout.noisy_gate_set}')
 
@@ -236,7 +238,7 @@ class HoneycombCircuitMaker:
             else:
                 raise NotImplementedError()
 
-    def append_si1000_round_pair(self, *, out_moments: List[stim.Circuit]):
+    def append_si1000_round_pair(self, *, out_moments: List[stim.Circuit], loc: str):
         data_targets = [self.q2i[q] for q in self.layout.data_qubits]
         data_targets_0 = [self.q2i[q] for q in self.layout.data_qubits if not checkerboard_type(q)]
         data_targets_1 = [self.q2i[q] for q in self.layout.data_qubits if checkerboard_type(q)]
@@ -255,6 +257,18 @@ class HoneycombCircuitMaker:
 
         for (a, b, c), (r_a, rab, rbc, rc_) in zip(parts, SI1000_DATA_ROTATION_SEQUENCE):
             out_moments.append(stim.Circuit())
+            if a + b + c == parts[1] and loc == 'measure':
+                if self.layout.time_boundary_data_basis == 'X':
+                    rc_ = 'C_XYZ'
+                elif self.layout.time_boundary_data_basis == 'Y':
+                    rc_ = 'I'
+            if a + b + c == parts[0] and loc == 'init':
+                if self.layout.time_boundary_data_basis == 'X':
+                    out_moments[-1].append('R', data_targets)
+                    r_a = 'I'
+                elif self.layout.time_boundary_data_basis == 'Y':
+                    out_moments[-1].append('R', data_targets)
+                    r_a = 'C_XYZ'
             out_moments[-1].append('R', all_measure_targets)
 
             out_moments.append(stim.Circuit())
@@ -345,11 +359,21 @@ class HoneycombCircuitMaker:
         assert layout.tested_observable in ['H', 'V']
         self.append_round_pair(out_moments=self.moments, loc='measure')
         data_targets = [self.q2i[q] for q in layout.data_qubits]
-        if self.layout.noisy_gate_set != 'SD6':
+        if self.layout.noisy_gate_set == 'SD6':
             self.moments.append(stim.Circuit())
-            self.moments[-1].append(f"H_{layout.time_boundary_data_basis}Z", data_targets)
-        self.moments.append(stim.Circuit())
-        self.moments[-1].append("M", data_targets)
+            self.moments[-1].append("M", data_targets)
+        elif self.layout.noisy_gate_set.startswith('EM'):
+            if layout.time_boundary_data_basis == 'Y':
+                targ = stim.target_y
+            else:
+                assert layout.time_boundary_data_basis == 'X'
+                targ = stim.target_x
+            self.moments.append(stim.Circuit())
+            self.moments[-1].append("MPP", [targ(q) for q in data_targets])
+        elif self.layout.noisy_gate_set == 'SI1000':
+            self.moments[-1].append("M", data_targets)
+        else:
+            raise NotImplementedError()
         self.tracker.add_measurements(*layout.data_qubits)
 
         # Hardcoded detectors at the future time boundary.
