@@ -56,9 +56,7 @@ def produce_code_distance_latex_table() -> str:
     entry_counts: DefaultDict[int, int] = collections.defaultdict(int)
     for k, v in entries.items():
         entry_counts[int(k.imag)] = max(entry_counts[int(k.imag)], len(v))
-    out = '\\begin{table}\n'
-    out += '\\centering\n'
-    out += '\\begin{tabular}{| r |'
+    out = '\\begin{tabular}{| r |'
     for x in range(1, max_x + 1):
         out += ' c |'
     out += '}\n'
@@ -77,21 +75,6 @@ def produce_code_distance_latex_table() -> str:
             out += '    \\hline\n'
     out += '    \\hline\n'
     out += '\\end{tabular}\n'
-    out += '\\label{tbl:graphlike_distances}'
-    out += r'''
-\caption{
-    Horizontal and vertical graphlike code distances of bounded honeycomb patches under circuit noise.
-    Computed using \emph{stim.Circuit.shortest\_graphlike\_error}.
-    A ``graphlike error" is an error that produces at most two detection events.
-    The graphlike code distance is the size of the smallest set of graphlike errors
-    that produce an undetectable logical error.
-    The true code distance may be smaller, but many issues can be caught by computing
-    the graphlike code distance.
-    For example, this is how we realized that a 2:3 aspect ratio was not optimal for
-    the SD6 layout, and that tilting could reduce the code distance.
-}
-'''
-    out += '\\end{table}'
 
     return out
 

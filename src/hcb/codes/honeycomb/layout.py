@@ -682,30 +682,48 @@ class HoneycombLayout:
         maker.process()
         return maker.final_noisy_circuit()
 
-    def to_problem(self, *, decoder: str) -> StabilizerPlanProblem:
+    def to_decoding_desc(self, *, decoder: str) -> DecodingProblemDesc:
+        style = 'bounded_honeycomb_memory'
+        if self.sheared:
+            style += '_sheared'
+        style += f'_{self.noisy_gate_set}'
+        return DecodingProblemDesc(
+            data_width=self.data_width,
+            data_height=self.data_height,
+            code_distance=min(self.data_width, self.data_height // 3 * 2),
+            num_qubits=len(self.all_qubits_set),
+            rounds=self.rounds,
+            noise=self.noise_level,
+            circuit_style=style,
+            preserved_observable="EPR",
+            decoder=decoder,
+        )
+
+    @functools.cached_property
+    def ideal_and_noisy_circuit(self) -> Tuple[stim.Circuit, stim.Circuit]:
         from hcb.codes.honeycomb.circuit_maker import HoneycombCircuitMaker
         maker = HoneycombCircuitMaker(layout=self)
         maker.process()
+        return (
+            # Hack: get consistent result by working around not fusing during circuit concatenation.
+            stim.Circuit(str(maker.final_ideal_circuit())),
+            stim.Circuit(str(maker.final_noisy_circuit())),
+        )
 
-        # Hack: get consistent result by working around not fusing during circuit concatenation.
-        noisy_circuit = stim.Circuit(str(maker.final_noisy_circuit()))
+    def to_decoding_problem(self, *, decoder: str) -> DecodingProblem:
+        return DecodingProblem(
+            circuit_maker=lambda: self.ideal_and_noisy_circuit[1],
+            desc=self.to_decoding_desc(decoder=decoder)
+        )
 
+    def to_stabilizer_plan_problem(self, *, decoder: str) -> StabilizerPlanProblem:
+        ideal, noisy = self.ideal_and_noisy_circuit
         return StabilizerPlanProblem(
-            ideal_circuit=maker.final_ideal_circuit(),
-            noisy_circuit=noisy_circuit,
+            ideal_circuit=ideal,
+            noisy_circuit=noisy,
             all_layouts=tuple(self.to_stabilizer_plan(k) for k in range(5)),
             decoding_problem=DecodingProblem(
-                circuit_maker=lambda: noisy_circuit,
-                desc=DecodingProblemDesc(
-                    data_width=self.data_width,
-                    data_height=self.data_height,
-                    code_distance=min(self.data_width, self.data_height // 3 * 2),
-                    num_qubits=len(self.all_qubits_set),
-                    rounds=self.rounds,
-                    noise=self.noise_level,
-                    circuit_style=f"bounded_honeycomb_memory_{self.noisy_gate_set}",
-                    preserved_observable="EPR",
-                    decoder=decoder,
-                )
+                circuit_maker=lambda: noisy,
+                desc=self.to_decoding_desc(decoder=decoder)
             ),
         )

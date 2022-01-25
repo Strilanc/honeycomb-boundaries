@@ -8,7 +8,33 @@ from hcb.tools.analysis.plotting import plot_data
 
 
 def iter_problems(decoder: str) -> Iterator[DecodingProblem]:
-    for p in [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05][::-1]:
+    error_rates = [
+        0.03,
+        0.02,
+        0.015,
+        0.01,
+        0.007,
+        0.005,
+        0.003,
+        0.002,
+        0.0015,
+        0.001,
+        0.0007,
+        0.0005,
+        0.0003,
+        0.0002,
+        0.0001
+    ]
+    gate_sets = [
+        # 'EM3_v2',
+        'SD6',
+        # 'SI1000',
+    ]
+    shearings = [
+        False,
+        # True,
+    ]
+    for p in error_rates:
         # for d in [3, 5, 7]:
         #     yield generate_surface_code_memory_problem(
         #         noise=p,
@@ -18,17 +44,18 @@ def iter_problems(decoder: str) -> Iterator[DecodingProblem]:
         #         decoder=decoder,
         #     ).decoding_problem
 
-        for noisy_gate_set in ['EM3_v2', 'SD6','SI1000']:
+        for noisy_gate_set in gate_sets:
             for d in [2, 4, 6, 8, 10, 12]:
-                yield HoneycombLayout(
-                    data_width=d,
-                    data_height=(d // 2) * 3,
-                    noise_level=p,
-                    noisy_gate_set=noisy_gate_set,
-                    tested_observable='EPR',
-                    sheared=False,
-                    rounds=d * 3,
-                ).to_problem(decoder=decoder).decoding_problem
+                for sheared in shearings:
+                    yield HoneycombLayout(
+                        data_width=d,
+                        data_height=(d // 2) * 3,
+                        noise_level=p,
+                        noisy_gate_set=noisy_gate_set,
+                        tested_observable='EPR',
+                        sheared=sheared,
+                        rounds=d * 3,
+                    ).to_decoding_problem(decoder=decoder)
 
 
 def main():
@@ -38,14 +65,16 @@ def main():
         iter_problems(decoder="internal"),
         out_path=data_file,
         merge_mode="saturate",
-        start_batch_size=2**8,
-        max_batch_size=2**18,
+        start_batch_size=10**2,
+        max_batch_size=10**6,
         max_shots=10_000_000,
         max_errors=1000,
         num_threads=8,
     )
 
-    plot_data(read_recorded_data(data_file),
+    stats = read_recorded_data(data_file)
+    stats = stats.filter(lambda e: 'SI1000' in e.circuit_style and e.data_width > 2)
+    plot_data(stats,
               show=True,
               title="Memory",
               x_max=1,

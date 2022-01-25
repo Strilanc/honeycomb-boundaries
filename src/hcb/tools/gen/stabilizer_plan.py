@@ -390,6 +390,7 @@ class StabilizerPlan:
                                      f'0 0,0 '
                                      f'{dt(b - a)}" '
                                      f'fill="{fill_color}" '
+                                     f'stroke-width="{abs(transform_dif(0.05))}" '
                                      f'stroke="black" />')
                 else:
                     x = f'<path d="M{pt(plan_i, dq[-1])}'
@@ -397,7 +398,7 @@ class StabilizerPlan:
                         x += ' ' + pt(plan_i, q)
                     x += '"'
                     lines.append(f'{x} fill="{fill_color}" stroke="none" />')
-                    post_lines.append(f'{x} stroke="black" fill="none" />')
+                    post_lines.append(f'{x} stroke="black" stroke-width="{abs(transform_dif(0.05))}" fill="none" />')
                     if common_basis is None:
                         clip_path_id += 1
                         lines.append(f'<clipPath id="clipPath{clip_path_id}">')
@@ -455,11 +456,23 @@ class StabilizerPlan:
             all_coords = {q for e in p.elements for q in e.data_coords_set()}
             for q in all_coords:
                 xy = transform_pt(plan_i, q)
-                lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{abs(transform_dif(0.1))}" stroke="black" fill="black" />')
+                lines.append(f'<circle '
+                             f'cx="{xy.real}" '
+                             f'cy="{xy.imag}" '
+                             f'r="{abs(transform_dif(0.1))}" '
+                             f'stroke-width="{abs(transform_dif(0.05))}" '
+                             f'stroke="black" '
+                             f'fill="black" />')
             all_coords = {e.measurement_qubit for e in p.elements if not e.measurement_qubit_is_artificial}
             for q in all_coords:
                 xy = transform_pt(plan_i, q)
-                lines.append(f'<circle cx="{xy.real}" cy="{xy.imag}" r="{abs(transform_dif(0.1))}" stroke="black" fill="white" />')
+                lines.append(f'<circle '
+                             f'cx="{xy.real}" '
+                             f'cy="{xy.imag}" '
+                             f'r="{abs(transform_dif(0.1))}" '
+                             f'stroke="black" '
+                             f'stroke-width="{abs(transform_dif(0.05))}" '
+                             f'fill="white" />')
 
         for plan_i, p in enumerate(plans):
             for obs_i, obs in enumerate(p.observables):

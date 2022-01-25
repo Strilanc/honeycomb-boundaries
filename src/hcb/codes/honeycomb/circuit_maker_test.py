@@ -91,7 +91,7 @@ def test_exact_circuit_EM3_v1_H():
                              noisy_gate_set='EM3_v1',
                              tested_observable='H',
                              sheared=True)
-    assert layout.to_problem(decoder='pymatching').noisy_circuit == stim.Circuit("""
+    assert layout.ideal_and_noisy_circuit[1] == stim.Circuit("""
         QUBIT_COORDS(0, 0) 0
         QUBIT_COORDS(1, 0) 1
         QUBIT_COORDS(1, 1) 2
@@ -265,7 +265,7 @@ def test_exact_circuit_SD6_V():
                              noisy_gate_set='SD6',
                              tested_observable='V',
                              sheared=False)
-    assert layout.to_problem(decoder='pymatching').noisy_circuit == stim.Circuit("""
+    assert layout.ideal_and_noisy_circuit[1] == stim.Circuit("""
         QUBIT_COORDS(0, 0) 0
         QUBIT_COORDS(0, 4) 1
         QUBIT_COORDS(0, 5) 2
@@ -645,7 +645,7 @@ def test_exact_circuit_SI1000_V():
                              noisy_gate_set='SI1000',
                              tested_observable='H',
                              sheared=False)
-    assert layout.to_problem(decoder='pymatching').noisy_circuit == stim.Circuit("""
+    assert layout.ideal_and_noisy_circuit[1] == stim.Circuit("""
         QUBIT_COORDS(0, 0) 0
         QUBIT_COORDS(0, 4) 1
         QUBIT_COORDS(0, 5) 2

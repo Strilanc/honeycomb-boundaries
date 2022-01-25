@@ -1,5 +1,5 @@
 import math
-from typing import Optional
+from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
@@ -31,7 +31,7 @@ def plot_data(data: ProblemShotData,
               x_min: float = 1e-4,
               x_max: float = 1e-2,
               y_max: float = 0.5,
-              y_min: float = 1e-6):
+              y_min: float = 1e-6) -> Tuple[plt.Figure, plt.Axes]:
     if out_path is None and show is None and ax is None:
         show = True
 
