@@ -412,7 +412,7 @@ class HoneycombLayout:
         if self.sheared:
             x = (self.data_height // 6) * 2 + (self.data_height % 2)
         else:
-            x = 1
+            x = self.data_width // 2
         result = sorted([q for q in self.data_qubit_set if q.real == x], key=complex_key)
         result.append(result[-1] + 1j)
         result.insert(0, result[0] - 1j)
@@ -420,8 +420,9 @@ class HoneycombLayout:
 
     @functools.cached_property
     def horizontal_observable_path(self) -> Tuple[complex, ...]:
+        y = (self.data_height // 6) * 3 - 2
         result = sorted(
-            [q for q in self.data_qubit_set if q.imag in [1, 2]],
+            [q for q in self.data_qubit_set if q.imag in [y, y + 1]],
             key=lambda q: (q.real, (q.imag + q.real) % 2 == 0)
         )
         result.append(result[-1] + 1)
@@ -691,11 +692,11 @@ class HoneycombLayout:
             data_width=self.data_width,
             data_height=self.data_height,
             code_distance=min(self.data_width, self.data_height // 3 * 2),
-            num_qubits=len(self.all_qubits_set),
+            num_qubits=len(self.data_qubit_set) if self.noisy_gate_set.startswith("EM3") else len(self.all_qubits_set),
             rounds=self.rounds,
             noise=self.noise_level,
             circuit_style=style,
-            preserved_observable="EPR",
+            preserved_observable=self.tested_observable,
             decoder=decoder,
         )
 

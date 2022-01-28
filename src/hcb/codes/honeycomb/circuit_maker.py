@@ -18,6 +18,15 @@ from hcb.tools.gen.viewer import stim_circuit_html_viewer
 EPR_ANCILLA: complex = -2
 
 
+def _moments_to_circuit(moments: List[stim.Circuit]) -> stim.Circuit:
+    result = stim.Circuit()
+    for c in moments:
+        result += c
+        if len(c) != 1 or not isinstance(c[0], stim.CircuitRepeatBlock):
+            result.append("TICK")
+    return result
+
+
 def rotation_op(old_basis: str, next_basis: str) -> str:
     if old_basis == next_basis:
         return 'I'
@@ -75,37 +84,18 @@ class HoneycombCircuitMaker:
     def is_physical(self) -> bool:
         return not self.noiseless_head_moments and not self.noiseless_tail_moments
 
-    def final_ideal_circuit(self) -> stim.Circuit:
+    def _final_circuit(self, body_transform) -> stim.Circuit:
         result = self.coords_header()
-        for c in self.noiseless_head_moments:
-            result += c
-            result.append("TICK")
-        for c in self.moments:
-            result += c
-            if len(result) != 1 or not isinstance(result[0], stim.CircuitRepeatBlock):
-                result.append("TICK")
-        for c in self.noiseless_tail_moments:
-            result += c
-            result.append("TICK")
+        result += _moments_to_circuit(self.noiseless_head_moments)
+        result += body_transform(_moments_to_circuit(self.moments))
+        result += _moments_to_circuit(self.noiseless_tail_moments)
         return result
+
+    def final_ideal_circuit(self) -> stim.Circuit:
+        return self._final_circuit(lambda e: e)
 
     def final_noisy_circuit(self) -> stim.Circuit:
-        result = self.coords_header()
-        for c in self.noiseless_head_moments:
-            result += c
-            result.append("TICK")
-
-        noisy_part = stim.Circuit()
-        for c in self.moments:
-            noisy_part += c
-            if len(result) != 1 or not isinstance(result[0], stim.CircuitRepeatBlock):
-                noisy_part.append("TICK")
-        result += self.noise_model().noisy_circuit(noisy_part)
-
-        for c in self.noiseless_tail_moments:
-            result += c
-            result.append("TICK")
-        return result
+        return self._final_circuit(self.noise_model().noisy_circuit)
 
     def noise_model(self) -> NoiseModel:
         if self.layout.noisy_gate_set == 'EM3_v2':
@@ -116,7 +106,7 @@ class HoneycombCircuitMaker:
             return NoiseModel.SD6(self.layout.noise_level)
         if self.layout.noisy_gate_set == 'SI1000':
             return NoiseModel.SI1000(self.layout.noise_level)
-        raise NotImplementedError()
+        raise NotImplementedError(f'{self.layout.noisy_gate_set=}')
 
     def append_init_round_pair(self):
         if self.layout.tested_observable == 'EPR':
@@ -451,12 +441,12 @@ def magical_obs_bell_measurement(*,
 
 def main():
     out_dir = pathlib.Path(__file__).parent.parent.parent.parent.parent / 'out'
-    layout = HoneycombLayout(data_width=8,
-                             data_height=12,
+    layout = HoneycombLayout(data_width=6,
+                             data_height=9,
                              rounds=10,
                              noise_level=0.001,
-                             noisy_gate_set='SD6',
-                             tested_observable='EPR',
+                             noisy_gate_set='EM3_v1',
+                             tested_observable='H',
                              sheared=False)
     edge_plan = layout.edge_plan
     hex_plan = layout.hex_plan
@@ -467,6 +457,9 @@ def main():
             elements=tuple([*hex_plan.elements, *edge_plan.elements]),
             observables=observable_plan.observables,
         ))
+    plans.append(StabilizerPlan(
+        elements=tuple([*hex_plan.elements, *edge_plan.elements]),
+    ))
 
     with open(out_dir / 'tmp.svg', 'w') as f:
         print(StabilizerPlan.svg(*plans, show_order=False), file=f)

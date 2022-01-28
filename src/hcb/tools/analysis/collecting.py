@@ -281,7 +281,7 @@ def collect_for_problem(*,
         num_next_shots *= 2
 
 
-def collect_detection_fraction_data(problems: List[DecodingProblem],
+def collect_detection_fraction_data(problems: Iterable[DecodingProblem],
                                     *,
                                     shots: int,
                                     out_path: Optional[Union[str, pathlib.Path]],
@@ -425,15 +425,13 @@ class ProblemShotData:
             groups.setdefault(group, ProblemShotData({})).data[k] = v
         return {k: groups[k] for k in sorted(groups.keys(), reverse=reverse)}
 
-    def merged_by(self, key: Callable[[DecodingProblemDesc], TKey]) -> Dict[TKey, 'ShotData']:
-        result: Dict[TKey, 'ShotData'] = {}
-        for k, v in self.data.items():
-            group = key(k)
-            d = result.setdefault(group, ShotData())
+    def merged_total(self) -> 'ShotData':
+        d = ShotData()
+        for v in self.data.values():
             d.num_shots += v.num_shots
             d.num_correct += v.num_correct
             d.total_processing_seconds += v.total_processing_seconds
-        return {k: result[k] for k in sorted(result.keys())}
+        return d
 
     def filter(self, predicate: Callable[[DecodingProblemDesc], bool]) -> 'ProblemShotData':
         result = ProblemShotData({})
