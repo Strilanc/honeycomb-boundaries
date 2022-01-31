@@ -1,7 +1,7 @@
 import pathlib
 import sys
 
-from hcb.tools.analysis.collecting import read_recorded_data, ProblemShotData
+from hcb.tools.analysis.collecting import read_recorded_data, MultiStats
 from hcb.tools.analysis.plotting import plot_data
 
 import matplotlib.pyplot as plt
@@ -27,18 +27,16 @@ def main():
 
     fig = plot_thresholds(all_data, focused=True)
     fig.set_size_inches(13, 10)
-    fig.savefig(OUT_DIR / "threshold.pdf", bbox_inches='tight')
     fig.savefig(OUT_DIR / "threshold.png", bbox_inches='tight', dpi=200)
 
     fig2 = plot_thresholds(all_data, focused=False)
     fig2.set_size_inches(13, 20)
-    fig2.savefig(OUT_DIR / "threshold_all.pdf", bbox_inches='tight')
     fig2.savefig(OUT_DIR / "threshold_all.png", bbox_inches='tight', dpi=200)
 
     plt.show()
 
 
-def plot_thresholds(all_data: ProblemShotData, focused: bool) -> plt.Figure:
+def plot_thresholds(all_data: MultiStats, focused: bool) -> plt.Figure:
     styles = {
         "SD6": [
             # ("surface_SD6", "X", "internal"),
@@ -117,7 +115,7 @@ def plot_thresholds(all_data: ProblemShotData, focused: bool) -> plt.Figure:
                 ax.axis('off')
                 continue
             used.add((row, col))
-            style_data = all_groups.get(style_obs_decoder, ProblemShotData({}))
+            style_data = all_groups.get(style_obs_decoder, MultiStats({}))
             ax: plt.Axes = axs[row][col]
             plot_data(
                 style_data,

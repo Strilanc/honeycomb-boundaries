@@ -4,7 +4,7 @@ import sys
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
-from hcb.tools.analysis.collecting import read_recorded_data, ProblemShotData
+from hcb.tools.analysis.collecting import read_recorded_data, MultiStats
 
 OUT_DIR = pathlib.Path("../../../out/").resolve()
 
@@ -32,7 +32,7 @@ def main():
     plt.show()
 
 
-def plot_detection_fraction(all_data: ProblemShotData) -> plt.Figure:
+def plot_detection_fraction(all_data: MultiStats) -> plt.Figure:
     included_styles = {
         'honeycomb_SI1000': 'SI1000\nToric',
         'bounded_honeycomb_memory_SI1000': 'SI1000\nBounded',
@@ -73,7 +73,7 @@ def plot_detection_fraction(all_data: ProblemShotData) -> plt.Figure:
     colors = list(mcolors.TABLEAU_COLORS) * 3
     for col, style in enumerate(included_styles):
         ax: plt.Axes = axs[col]
-        style_data = all_groups.get(style, ProblemShotData({})).grouped_by(lambda e: e.noise)
+        style_data = all_groups.get(style, MultiStats({})).grouped_by(lambda e: e.noise)
         for noise, case_data in style_data.items():
             xs = []
             ys = []

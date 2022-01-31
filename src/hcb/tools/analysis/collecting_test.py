@@ -5,7 +5,7 @@ import pytest
 import stim
 
 from hcb.tools.analysis.collecting import (
-    collect_simulated_experiment_data, ShotData, read_recorded_data, DecodingProblem,
+    collect_simulated_experiment_data, CaseStats, read_recorded_data, DecodingProblem,
     DecodingProblemDesc,
 )
 from .plotting import plot_data
@@ -58,27 +58,27 @@ def test_collect_and_plot():
 
 def test_likely_error_rate_bounds_shrink_towards_half():
     np.testing.assert_allclose(
-        ShotData(num_shots=10 ** 5, num_correct=10 ** 5 / 2).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3),
+        CaseStats(num_shots=10 ** 5, num_correct=10 ** 5 / 2).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3),
         (0.494122, 0.505878),
         rtol=1e-4,
     )
     np.testing.assert_allclose(
-        ShotData(num_shots=10 ** 4, num_correct=10 ** 4 / 2).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3),
+        CaseStats(num_shots=10 ** 4, num_correct=10 ** 4 / 2).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3),
         (0.481422, 0.518578),
         rtol=1e-4,
     )
     np.testing.assert_allclose(
-        ShotData(num_shots=10 ** 4, num_correct=10 ** 4 / 2).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-2),
+        CaseStats(num_shots=10 ** 4, num_correct=10 ** 4 / 2).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-2),
         (0.48483, 0.51517),
         rtol=1e-4,
     )
     np.testing.assert_allclose(
-        ShotData(num_shots=1000, num_correct=500).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3),
+        CaseStats(num_shots=1000, num_correct=500).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3),
         (0.44143, 0.55857),
         rtol=1e-4,
     )
     np.testing.assert_allclose(
-        ShotData(num_shots=100, num_correct=50).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3),
+        CaseStats(num_shots=100, num_correct=50).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3),
         (0.3204, 0.6796),
         rtol=1e-4,
     )
@@ -94,7 +94,7 @@ def test_likely_error_rate_bounds_shrink_towards_half():
 ])
 def test_likely_error_rate_bounds_vs_log_binomial(n: int, c: int, ratio: float):
 
-    a, b = ShotData(num_shots=n, num_correct=c).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=ratio)
+    a, b = CaseStats(num_shots=n, num_correct=c).likely_error_rate_bounds(desired_ratio_vs_max_likelihood=ratio)
 
     raw = log_binomial(p=(n - c) / n, n=n, hits=n - c)
     low = log_binomial(p=a, n=n, hits=n - c)

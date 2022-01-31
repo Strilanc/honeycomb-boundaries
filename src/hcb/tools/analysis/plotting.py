@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import matplotlib.colors as mcolors
 
-from hcb.tools.analysis.collecting import ProblemShotData, DecodingProblemDesc
+from hcb.tools.analysis.collecting import MultiStats, DecodingProblemDesc
 
 
 def total_error_to_per_piece_error(error_rate: float, pieces: int) -> float:
@@ -19,7 +19,7 @@ def total_error_to_per_piece_error(error_rate: float, pieces: int) -> float:
     return round_error_rate
 
 
-def plot_data(data: ProblemShotData,
+def plot_data(data: MultiStats,
               *,
               title: str,
               out_path: Optional[str] = None,

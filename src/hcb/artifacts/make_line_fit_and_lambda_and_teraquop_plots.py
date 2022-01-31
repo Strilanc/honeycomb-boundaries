@@ -12,7 +12,7 @@ from scipy.stats._stats_mstats_common import LinregressResult
 
 import matplotlib.pyplot as plt
 
-from hcb.tools.analysis.collecting import read_recorded_data, ProblemShotData, DecodingProblemDesc, ShotData
+from hcb.tools.analysis.collecting import read_recorded_data, MultiStats, DecodingProblemDesc, CaseStats
 from hcb.tools.analysis.plotting import total_error_to_per_piece_error
 from hcb.tools.analysis.probability_util import least_squares_slope_range, least_squares_output_range
 
@@ -36,17 +36,14 @@ def main():
 
     fig0, _ = plot_lambda_line_fits_combo(all_data, focus=False)
     fig0.set_size_inches(13, 10)
-    fig0.savefig(OUT_DIR / "linefits_all.pdf", bbox_inches='tight')
     fig0.savefig(OUT_DIR / "linefits_all.png", bbox_inches='tight', dpi=200)
 
     fig1, _ = plot_lambda_line_fits_combo(all_data, focus=True)
     fig1.set_size_inches(13, 10)
-    fig1.savefig(OUT_DIR / "linefits.pdf", bbox_inches='tight')
     fig1.savefig(OUT_DIR / "linefits.png", bbox_inches='tight', dpi=200)
 
     fig2, _ = plot_lambda_combo(all_data)
     fig2.set_size_inches(13, 5)
-    fig2.savefig(OUT_DIR / "lambda.pdf", bbox_inches='tight')
     fig2.savefig(OUT_DIR / "lambda.png", bbox_inches='tight', dpi=200)
 
     fig3, _ = plot_teraquop_combo(all_data)
@@ -57,7 +54,7 @@ def main():
     plt.show()
 
 
-def plot_lambda_line_fits_combo(all_data: ProblemShotData, focus: bool) -> Tuple[plt.Figure, plt.Axes]:
+def plot_lambda_line_fits_combo(all_data: MultiStats, focus: bool) -> Tuple[plt.Figure, plt.Axes]:
     styles = {
         "SD6": [
             ("surface_SD6", "internal"),
@@ -123,7 +120,7 @@ def plot_lambda_line_fits_combo(all_data: ProblemShotData, focus: bool) -> Tuple
                 ax.axis('off')
                 continue
             used.add((row, col))
-            style_data = all_groups.get(style_decoder, ProblemShotData({}))
+            style_data = all_groups.get(style_decoder, MultiStats({}))
             axs[row][col].set_title(name)
 
             groups = LambdaGroup.groups_from_data(style_data)
@@ -174,7 +171,10 @@ def plot_lambda_line_fits_combo(all_data: ProblemShotData, focus: bool) -> Tuple
     return fig, axs
 
 
-def plot_lambda_combo(all_data: ProblemShotData) -> Tuple[plt.Figure, plt.Axes]:
+MARKERS = "ov*sx+"
+
+
+def plot_lambda_combo(all_data: MultiStats) -> Tuple[plt.Figure, plt.Axes]:
     styles = {
         "SD6": [
             ("honeycomb_SD6", "internal"),
@@ -212,7 +212,7 @@ def plot_lambda_combo(all_data: ProblemShotData) -> Tuple[plt.Figure, plt.Axes]:
         poor_xs = []
         poor_ys = []
         for case_i, case in enumerate(cases):
-            case_data = all_groups.get(case, ProblemShotData({}))
+            case_data = all_groups.get(case, MultiStats({}))
             groups = LambdaGroup.groups_from_data(case_data)
             lambda_xs = []
             lambda_ys = []
@@ -243,7 +243,7 @@ def plot_lambda_combo(all_data: ProblemShotData) -> Tuple[plt.Figure, plt.Axes]:
                 label += " (Correlated)"
             else:
                 label += " (Standard)"
-            ax.plot(lambda_xs, lambda_ys, marker="ov*sx-"[case_i], label=label, zorder=100 - i)
+            ax.plot(lambda_xs, lambda_ys, marker=MARKERS[case_i], label=label, zorder=100 - i)
             ax.fill_between(lambda_xs, lambda_ys_low, lambda_ys_high, alpha=0.3)
         if have_any_poor:
             ax.scatter(poor_xs, poor_ys, s=200, color="red", zorder=100, alpha=0.3)
@@ -266,7 +266,7 @@ def plot_lambda_combo(all_data: ProblemShotData) -> Tuple[plt.Figure, plt.Axes]:
     return fig, axs
 
 
-def plot_teraquop_combo(all_data: ProblemShotData) -> Tuple[plt.Figure, plt.Axes]:
+def plot_teraquop_combo(all_data: MultiStats) -> Tuple[plt.Figure, plt.Axes]:
     styles = {
         "SD6": [
             ("honeycomb_SD6", "internal"),
@@ -304,7 +304,7 @@ def plot_teraquop_combo(all_data: ProblemShotData) -> Tuple[plt.Figure, plt.Axes
         poor_xs = []
         poor_ys = []
         for case_i, (style, decoder) in enumerate(cases):
-            case_data = all_groups.get((style, decoder), ProblemShotData({}))
+            case_data = all_groups.get((style, decoder), MultiStats({}))
             groups = LambdaGroup.groups_from_data(case_data)
             lambda_xs = []
             lambda_ys = []
@@ -336,7 +336,7 @@ def plot_teraquop_combo(all_data: ProblemShotData) -> Tuple[plt.Figure, plt.Axes
                 label += " (Correlated)"
             else:
                 label += " (Standard)"
-            ax.plot(lambda_xs, lambda_ys, marker="ov*sx-"[case_i], label=label, zorder=100-case_i)
+            ax.plot(lambda_xs, lambda_ys, marker=MARKERS[case_i], label=label, zorder=100-case_i)
             ax.fill_between(lambda_xs, lambda_ys_low, lambda_ys_high, alpha=0.3)
 
         have_any_poor |= bool(poor_ys)
@@ -364,9 +364,9 @@ def plot_teraquop_combo(all_data: ProblemShotData) -> Tuple[plt.Figure, plt.Axes
 class LambdaGroup:
     noise: float
     rep: DecodingProblemDesc
-    distance_error_pairs_h: Dict[int, ShotData]
-    distance_error_pairs_v: Dict[int, ShotData]
-    distance_error_pairs_epr: Dict[int, ShotData]
+    distance_error_pairs_h: Dict[int, CaseStats]
+    distance_error_pairs_v: Dict[int, CaseStats]
+    distance_error_pairs_epr: Dict[int, CaseStats]
 
     @functools.cached_property
     def combo_data(self) -> Tuple[List[int], List[float]]:
@@ -409,7 +409,7 @@ class LambdaGroup:
         return xs, ys
 
     @staticmethod
-    def groups_from_data(data: ProblemShotData) -> Dict[float, 'LambdaGroup']:
+    def groups_from_data(data: MultiStats) -> Dict[float, 'LambdaGroup']:
         groups: Dict[float, LambdaGroup] = {}
         for key, val in data.data.items():
             if key.noise not in groups:

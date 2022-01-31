@@ -98,13 +98,13 @@ def test_binary_intercept():
 
 
 def test_least_squares_output_range():
-    low, high = least_squares_output_range(
+    low, mid, high = least_squares_output_range(
         xs=[1, 2, 3],
         ys=[1, 5, 9],
         target_x=100,
         cost_increase=1,
     )
-    assert 300 < low < 400 < high < 500
+    assert 300 < low < 390 < mid < 410 < high < 500
 
 
 def test_least_squares_slope_range():

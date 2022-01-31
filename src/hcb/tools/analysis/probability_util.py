@@ -135,12 +135,12 @@ def least_squares_output_range(*,
                                xs: Sequence[float],
                                ys: Sequence[float],
                                target_x: float,
-                               cost_increase: float) -> Tuple[float, float]:
+                               cost_increase: float) -> Tuple[float, float, float]:
     xs = np.array(xs, dtype=np.float64)
     ys = np.array(ys, dtype=np.float64)
     fit = linregress(xs, ys)
     base_cost = least_squares_cost(xs=xs, ys=ys, intercept=fit.intercept, slope=fit.slope)
-    base_y = fit.intercept + target_x * fit.slope
+    base_y = float(fit.intercept + target_x * fit.slope)
 
     def cost_for_y(y2: float) -> float:
         fit2 = least_squares_through_point(xs=xs, ys=ys, required_x=target_x, required_y=y2)
@@ -148,7 +148,7 @@ def least_squares_output_range(*,
 
     low_y = binary_intercept(start_x=base_y, step=-1, target_y=base_cost + cost_increase, func=cost_for_y, atol=1e-5)
     high_y = binary_intercept(start_x=base_y, step=1, target_y=base_cost + cost_increase, func=cost_for_y, atol=1e-5)
-    return low_y, high_y
+    return low_y, base_y, high_y
 
 
 def least_squares_slope_range(*,

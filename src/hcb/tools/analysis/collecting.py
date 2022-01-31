@@ -156,7 +156,7 @@ def collect_simulated_experiment_data(problems: Iterable[DecodingProblem],
             a C++ decoder that's safe to invoke separately across multiple threads.
     """
     print(CSV_HEADER, flush=True)
-    previous_data = ProblemShotData({})
+    previous_data = MultiStats({})
     if out_path is not None:
         if merge_mode == "replace" or not pathlib.Path(out_path).exists():
             with open(out_path, "w") as f:
@@ -183,7 +183,7 @@ def collect_simulated_experiment_data(problems: Iterable[DecodingProblem],
             manager.available.acquire()
             threaded_collect_for_problem(
                 problem=problem,
-                prev_data=previous_data.data.get(problem.desc, ShotData()),
+                prev_data=previous_data.data.get(problem.desc, CaseStats()),
                 start_batch_size=start_batch_size,
                 max_batch_size=max_batch_size,
                 max_errors=max_errors,
@@ -203,7 +203,7 @@ def collect_simulated_experiment_data(problems: Iterable[DecodingProblem],
 
 def threaded_collect_for_problem(*,
                                  problem: DecodingProblem,
-                                 prev_data: 'ShotData',
+                                 prev_data: 'CaseStats',
                                  start_batch_size: int,
                                  max_batch_size: Optional[int],
                                  max_errors: int,
@@ -234,7 +234,7 @@ def threaded_collect_for_problem(*,
 
 def collect_for_problem(*,
                         problem: DecodingProblem,
-                        prev_data: 'ShotData',
+                        prev_data: 'CaseStats',
                         start_batch_size: int,
                         max_batch_size: Optional[int],
                         max_errors: int,
@@ -320,64 +320,31 @@ def collect_detection_fraction_data(problems: Iterable[DecodingProblem],
 
 
 @dataclasses.dataclass
-class RemainingWork:
-    shot_data: 'ShotData'
-    max_shots: int
-    max_errors: int
-    threshold_circuit_breaker: float
-
-    @property
-    def finished(self) -> bool:
-        if self.shot_data.num_shots >= self.max_shots:
-            return True
-        if self.shot_data.num_errors >= self.max_errors:
-            return True
-        if self.shot_data.logical_error_rate >= self.threshold_circuit_breaker and self.shot_data.num_shots >= 10:
-            return True
-        return False
-
-    @property
-    def remaining_shots(self) -> int:
-        if self.finished:
-            return 0
-        return self.max_shots - self.shot_data.num_shots
-
-    @property
-    def remaining_errors(self) -> int:
-        if self.finished:
-            return 0
-        return self.max_errors - self.shot_data.num_errors
-
-    @property
-    def remaining_time(self) -> float:
-        if self.finished:
-            return 0
-        times = [float('inf')]
-        if self.shot_data.num_shots:
-            times.append(self.remaining_shots * self.shot_data.total_processing_seconds / self.shot_data.num_shots)
-        if self.shot_data.num_errors:
-            times.append(self.remaining_errors * self.shot_data.total_processing_seconds / self.shot_data.num_errors)
-        return min(times)
-
-
-
-@dataclasses.dataclass
-class ShotData:
+class CaseStats:
     num_shots: int = 0
     num_correct: int = 0
     total_processing_seconds: float = 0
 
-    def copy(self) -> 'ShotData':
-        return ShotData(num_shots=self.num_shots,
-                        num_correct=self.num_correct,
-                        total_processing_seconds=self.total_processing_seconds)
+    def copy(self) -> 'CaseStats':
+        return CaseStats(num_shots=self.num_shots,
+                         num_correct=self.num_correct,
+                         total_processing_seconds=self.total_processing_seconds)
+
+    def extrapolate_intersection(self, other: 'CaseStats') -> 'CaseStats':
+        p0 = self.logical_error_rate
+        p1 = other.logical_error_rate
+        p01 = 1 - (1 - p0) * (1 - p1)
+        n = min(self.num_shots, other.num_shots)
+        c = int(n * (1 - p01))
+        return CaseStats(
+            num_shots=n,
+            num_correct=c,
+            total_processing_seconds=self.total_processing_seconds + other.total_processing_seconds,
+        )
 
     @property
     def num_errors(self) -> int:
         return self.num_shots - self.num_correct
-
-    def remaining_work(self, max_shots: int, max_errors: int, threshold_circuit_breaker: float) -> RemainingWork:
-        return RemainingWork(shot_data=self, max_shots=max_shots, max_errors=max_errors, threshold_circuit_breaker=threshold_circuit_breaker)
 
     def likely_error_rate_bounds(self, *, desired_ratio_vs_max_likelihood: float) -> Tuple[float, float]:
         """Compute relative-likelihood bounds.
@@ -412,37 +379,59 @@ TKey = TypeVar('TKey')
 
 
 @dataclasses.dataclass
-class ProblemShotData:
-    data: Dict[DecodingProblemDesc, ShotData]
+class MultiStats:
+    data: Dict[DecodingProblemDesc, CaseStats] = dataclasses.field(default_factory=dict)
 
     def grouped_by(self,
                    key: Callable[[DecodingProblemDesc], TKey],
                    *,
-                   reverse: bool = False) -> Dict[TKey, 'ProblemShotData']:
+                   reverse: bool = False) -> Dict[TKey, 'MultiStats']:
         groups = {}
         for k, v in self.data.items():
             group = key(k)
-            groups.setdefault(group, ProblemShotData({})).data[k] = v
+            groups.setdefault(group, MultiStats({})).data[k] = v
         return {k: groups[k] for k in sorted(groups.keys(), reverse=reverse)}
 
-    def merged_total(self) -> 'ShotData':
-        d = ShotData()
+    def merged_total(self) -> 'CaseStats':
+        d = CaseStats()
         for v in self.data.values():
             d.num_shots += v.num_shots
             d.num_correct += v.num_correct
             d.total_processing_seconds += v.total_processing_seconds
         return d
 
-    def filter(self, predicate: Callable[[DecodingProblemDesc], bool]) -> 'ProblemShotData':
-        result = ProblemShotData({})
+    def filter(self, predicate: Callable[[DecodingProblemDesc], bool]) -> 'MultiStats':
+        result = MultiStats({})
         for k, v in self.data.items():
             if predicate(k):
                 result.data[k] = v
         return result
 
+    def after_discarding_degenerates(self) -> 'MultiStats':
+        result = MultiStats({})
+        for k, v in self.data.items():
+            if v.num_correct != v.num_shots and v.num_correct != 0:
+                result.data[k] = v
+        return result
 
-def read_recorded_data(*paths: Union[str, pathlib.Path]) -> ProblemShotData:
-    result = ProblemShotData({})
+    def to_xs_ys(self,
+                 *,
+                 x_func: Callable[[DecodingProblemDesc], float],
+                 y_func: Callable[[CaseStats], float],
+                 ) -> Tuple[List[float], List[float]]:
+        xs = []
+        ys = []
+        for x, group_stats in self.grouped_by(x_func).items():
+            if len(group_stats.data) != 1:
+                raise ValueError(f"x_func key had multiple items: {x}: {group_stats!r}")
+            (_, v), = group_stats.data.items()
+            xs.append(x)
+            ys.append(y_func(v))
+        return xs, ys
+
+
+def read_recorded_data(*paths: Union[str, pathlib.Path]) -> MultiStats:
+    result = MultiStats({})
     for path in paths:
         with open(path, "r") as f:
             for row in csv.DictReader(f):
@@ -457,7 +446,7 @@ def read_recorded_data(*paths: Union[str, pathlib.Path]) -> ProblemShotData:
                     preserved_observable=row["preserved_observable"],
                     decoder=row["decoder"],
                 )
-                val = result.data.setdefault(key, ShotData())
+                val = result.data.setdefault(key, CaseStats())
                 val.num_shots += int(row["num_shots"])
                 val.num_correct += int(row["num_correct"])
                 val.total_processing_seconds += float(row["total_processing_seconds"])
