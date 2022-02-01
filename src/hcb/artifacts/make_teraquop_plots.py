@@ -2,6 +2,7 @@ import math
 import pathlib
 import sys
 from typing import List, Tuple, Dict
+import numpy as np
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -78,18 +79,23 @@ def make_teraquop_plots(
     return fig, axs
 
 
-def extrapolate_qubit_count(*, start: DecodingProblemDesc, new_distance: float) -> int:
-    if start.circuit_style.startswith("bounded_honeycomb_memory_"):
+def extrapolate_qubit_count(*,
+                            starts: List[DecodingProblemDesc],
+                            new_distance: float) -> int:
+    style, = {e.circuit_style for e in starts}
+    if style.startswith("bounded_honeycomb_memory_"):
         quant = 2
-    elif start.circuit_style.startswith("honeycomb_"):
+    elif style.startswith("honeycomb_"):
         quant = 4
     else:
         raise NotImplementedError()
-    new_distance = math.ceil(new_distance / quant) * quant
-    return start.num_qubits * int((new_distance / start.code_distance)**2)
+    a, b, c = np.polyfit([e.data_width for e in starts], [e.num_qubits for e in starts], 2)
+    d = math.ceil(new_distance / quant) * quant
+    return d*d*a + d*b + c
 
 
-def teraquop_intercept_range(start: DecodingProblemDesc,
+def teraquop_intercept_range(*,
+                             starts: List[DecodingProblemDesc],
                              xs: List[float],
                              ys: List[float]) -> Tuple[float, float, float]:
     assert len(xs) > 1
@@ -100,7 +106,7 @@ def teraquop_intercept_range(start: DecodingProblemDesc,
         target_x=math.log(1e-12),
         cost_increase=1)
     qlow, qmid, qhigh = [
-        extrapolate_qubit_count(start=start, new_distance=d)
+        extrapolate_qubit_count(starts=starts, new_distance=d)
         for d in (dlow, dmid, dhigh)
     ]
     return qlow, qmid, qhigh
@@ -127,8 +133,10 @@ def fill_in_single_teraquop_plot(
             if linregress(linefit_xs, linefit_ys).slope > -0.001:
                 continue
 
-            start = next(iter(noise_stats.data))
-            low, best, high = teraquop_intercept_range(start=start, xs=linefit_xs, ys=linefit_ys)
+            low, best, high = teraquop_intercept_range(
+                starts=list(noise_stats.data.keys()),
+                xs=linefit_xs,
+                ys=linefit_ys)
             xs.append(noise)
             ys_low.append(low)
             ys.append(best)
