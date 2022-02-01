@@ -57,7 +57,7 @@ def main():
     }
 
     fig2, _ = make_teraquop_plots(all_data, groups)
-    fig2.set_size_inches(13, 5)
+    fig2.set_size_inches(13, 7)
     fig2.savefig(OUT_DIR / "teraquop.png", bbox_inches='tight', dpi=200)
 
     plt.show()

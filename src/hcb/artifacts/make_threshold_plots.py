@@ -52,7 +52,7 @@ def main():
     }
 
     fig, _ = make_threshold_plots(all_data, groups)
-    fig.set_size_inches(13, 5)
+    fig.set_size_inches(13, 7)
     fig.savefig(OUT_DIR / "threshold.png", bbox_inches='tight', dpi=200)
 
     plt.show()

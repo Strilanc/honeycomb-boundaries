@@ -25,21 +25,19 @@ def main():
 
     fig = plot_detection_fraction(all_data)
     fig.set_size_inches(15, 5)
-    fig.savefig(OUT_DIR / "detection_fractions.pdf", bbox_inches='tight')
     fig.savefig(OUT_DIR / "detection_fractions.png", bbox_inches='tight', dpi=200)
-
 
     plt.show()
 
 
 def plot_detection_fraction(all_data: MultiStats) -> plt.Figure:
     included_styles = {
-        'honeycomb_SI1000': 'SI1000\nToric',
-        'bounded_honeycomb_memory_SI1000': 'SI1000\nBounded',
-        'honeycomb_SD6': 'SD6\nToric',
-        'bounded_honeycomb_memory_SD6': 'SD6\nBounded',
-        "honeycomb_EM3_v2": "EM3\nToric",
-        "bounded_honeycomb_memory_EM3_v2": "EM3\nBounded",
+        'honeycomb_SI1000': ("SI1000", "Toric"),
+        'honeycomb_SD6': ("SD6", "Toric"),
+        "honeycomb_EM3_v2": ("EM3", "Toric"),
+        'bounded_honeycomb_memory_SI1000': ("SI1000", "Bounded"),
+        'bounded_honeycomb_memory_SD6': ("SD6", "Bounded"),
+        "bounded_honeycomb_memory_EM3_v2": ("EM3", "Bounded"),
     }
     known_styles = {
         "surface_SD6",
@@ -65,37 +63,47 @@ def plot_detection_fraction(all_data: MultiStats) -> plt.Figure:
         raise NotImplementedError(repr(missed))
 
     fig = plt.figure()
-    ncols = len(included_styles)
-    nrows = 1
+    ncols = len(included_styles) // 2
+    nrows = 2
     gs = fig.add_gridspec(ncols=ncols + 1, nrows=nrows, hspace=0.05, wspace=0.1)
     axs = gs.subplots(sharex=True, sharey=True)
     markers = "ov*sp^<>8P+xXDd|"
     colors = list(mcolors.TABLEAU_COLORS) * 3
-    for col, style in enumerate(included_styles):
-        ax: plt.Axes = axs[col]
+    for k2, style in enumerate(included_styles):
+        col = k2 % ncols
+        row = k2 // ncols
+        ax: plt.Axes = axs[row, col]
         style_data = all_groups.get(style, MultiStats({})).grouped_by(lambda e: e.noise)
         for noise, case_data in style_data.items():
             xs = []
             ys = []
             for k, v in case_data.data.items():
-                xs.append(k.code_distance)
+                xs.append(k.data_width)
                 ys.append(v.logical_error_rate)
             order = p2i[noise]
             ax.plot(xs, ys, label=str(noise), marker=markers[order], color=colors[order])
-        ax.set_title(included_styles[style])
+        if row == 0:
+            ax.set_title(included_styles[style][0])
+        if col == 0:
+            ax.set_ylabel(included_styles[style][1] + "\nDetection Fraction")
         ax.set_ylim(0, 0.5)
         ax.set_xlim(0, 20)
         ax.set_xticks([0, 5, 10, 15, 20])
         ax.set_xticklabels(["0", "5", "10", "15", "20"], rotation=90)
-    axs[0].set_yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5])
-    axs[0].set_yticklabels(["0%", "10%", "20%", "30%", "40%", "50%"])
-    axs[-1].axis('off')
-    a, b = axs[-2].get_legend_handles_labels()
-    axs[-1].legend(a[::-1], b[::-1], loc='upper left', title="Physical Error Rate")
-    axs[0].set_ylabel("Detection Fraction")
-    for ax in axs:
-        ax.set_xlabel("Code Distance")
-        ax.grid()
+    for x in range(ncols):
+        for y in range(nrows):
+            axs[y, x].grid()
+            axs[y, x].set_yticks([])
+
+    for y in range(nrows):
+        axs[y, 0].set_yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5])
+        axs[y, 0].set_yticklabels(["0%", "10%", "20%", "30%", "40%", "50%"])
+        axs[y, -1].axis('off')
+    a, b = axs[1, -2].get_legend_handles_labels()
+    axs[0, -1].legend(a[::-1], b[::-1], loc='upper left', title="Physical Error Rate")
+    axs[1, -1].set_visible(False)
+    for x in range(ncols):
+        axs[-1, x].set_xlabel("Patch Width")
 
     return fig
 
