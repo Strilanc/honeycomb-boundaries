@@ -54,7 +54,7 @@ class HoneycombCircuitMaker:
         elif self.layout.noisy_gate_set in ['SD6', 'SI1000']:
             used_qubits = self.layout.edge_plan.used_coords_set()
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(f'{self.layout.noisy_gate_set}')
         self.q2i = {q: i for i, q in enumerate(sorted(used_qubits, key=complex_key_prefer_ints))}
         if self.layout.tested_observable == 'EPR':
             assert EPR_ANCILLA not in self.q2i

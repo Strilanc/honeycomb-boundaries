@@ -3,25 +3,25 @@ from typing import DefaultDict
 
 from hcb.codes.honeycomb.layout import HoneycombLayout
 
-
 def produce_code_distance_latex_table() -> str:
     entries = collections.defaultdict(list)
-    widths = [2, 4, 6, 8, 10, 12, 14]
-    heights = [3, 6, 9, 12, 15, 18, 21]
+    widths = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    heights = [3 * k + 3 for k in range(len(widths))]
+    assert len(widths) == len(heights)
     y = 0
     for case in range(2):
         vals = heights if case == 0 else widths
         if case == 0:
-            entries[y*1j].append('H-vulnerable layout (w=2h)')
+            entries[y*1j].append('using w>>h')
         else:
-            entries[y * 1j].append('V-vulnerable layout (h=3w)')
+            entries[y * 1j].append('using h>>w')
         for x, v in enumerate(vals):
             if case == 0:
                 entries[x + 1 + y*1j].append(f'$h={v}$')
             else:
                 entries[x + 1 + y*1j].append(f'$w={v}$')
         y += 1
-        for gate_set in ['EM3_v2', 'SD6', 'SI100']:
+        for gate_set in ['EM3_v2', 'SD6', 'SI1000']:
             for sheared in [True, False]:
                 s = '(tilt) ' if sheared else ''
                 g = gate_set.replace('EM3_v2', 'EM3')
@@ -35,19 +35,22 @@ def produce_code_distance_latex_table() -> str:
                         data_width = v
                         data_height = v * 3 - 3
                         obs = 'V'
-                    layout = HoneycombLayout(
-                        data_width=data_width,
-                        data_height=data_height,
-                        rounds=4,
-                        noise_level=0.001,
-                        noisy_gate_set=gate_set,
-                        tested_observable=obs,
-                        sheared=sheared,
-                    )
-                    circuit = layout.noisy_circuit()
-                    dem = circuit.detector_error_model(decompose_errors=False)
-                    err = dem.shortest_graphlike_error(ignore_ungraphlike_errors=True)
-                    d = str(len(err))
+                    if sheared and data_width % 2 == 1:
+                        d = "N/A"
+                    else:
+                        layout = HoneycombLayout(
+                            data_width=data_width,
+                            data_height=data_height,
+                            rounds=4,
+                            noise_level=0.001,
+                            noisy_gate_set=gate_set,
+                            tested_observable=obs,
+                            sheared=sheared,
+                        )
+                        circuit = layout.noisy_circuit()
+                        err = circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True)
+                        d = str(len(err))
+                        print(layout.to_decoding_desc(decoder="internal"))
                     d = d.rjust(4)
                     entries[x + 1 + 1j*y].append(d)
         y += 1

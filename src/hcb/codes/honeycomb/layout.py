@@ -420,7 +420,7 @@ class HoneycombLayout:
 
     @functools.cached_property
     def horizontal_observable_path(self) -> Tuple[complex, ...]:
-        y = (self.data_height // 6) * 3 - 2
+        y = (self.data_height // 6) * 3 + 1
         result = sorted(
             [q for q in self.data_qubit_set if q.imag in [y, y + 1]],
             key=lambda q: (q.real, (q.imag + q.real) % 2 == 0)
