@@ -10,16 +10,18 @@ OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
 def iter_problems(decoders: List[str]) -> Iterator[DecodingProblem]:
     error_rates = [
+        0.001,
+        0.0015,
+        0.002,
+        0.003,
+        0.005,
+        0.007,
+
         0.03,
         0.02,
         0.015,
         0.01,
-        0.007,
-        0.005,
-        0.003,
-        0.002,
-        0.0015,
-        0.001,
+
         0.0007,
         0.0005,
         0.0003,
@@ -48,13 +50,15 @@ def iter_problems(decoders: List[str]) -> Iterator[DecodingProblem]:
         11,
     ]
     for p in error_rates:
-        for noisy_gate_set in gate_sets:
-            for d in distances:
-                w, h = HoneycombLayout.unsheared_size_for_code_distance(distance=d,
-                                                                        gate_set=noisy_gate_set)
-                for sheared in shearings:
-                    for decoder in decoders:
-                        for obs in observables:
+        for d in distances:
+            for sheared in shearings:
+                for decoder in decoders:
+                    for obs in observables:
+                        for noisy_gate_set in gate_sets:
+                            w, h = HoneycombLayout.unsheared_size_for_code_distance(
+                                distance=d,
+                                gate_set=noisy_gate_set,
+                            )
                             yield HoneycombLayout(
                                 data_width=w,
                                 data_height=h,

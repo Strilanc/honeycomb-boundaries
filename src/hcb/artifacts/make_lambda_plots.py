@@ -36,10 +36,10 @@ def main():
         'EM3': 'EM3_v2',
     }
     layouts = {
-        'toric (standard)': ('honeycomb', 'internal'),
-        'toric (correlated)': ('honeycomb', 'internal_correlated'),
-        'bounded (standard)': ('bounded_honeycomb_memory', 'internal'),
-        'bounded (correlated)': ('bounded_honeycomb_memory', 'internal_correlated'),
+        'periodic honeycomb code\n(standard decoding)': ('honeycomb', 'internal'),
+        'periodic honeycomb code\n(correlated decoding)': ('honeycomb', 'internal_correlated'),
+        'planar honeycomb code\n(standard decoding)': ('bounded_honeycomb_memory', 'internal'),
+        'planar honeycomb code\n(correlated decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
     }
     groups = {
         gate_set_caption: [
@@ -96,10 +96,9 @@ def fill_in_single_lambda_plot(
             ys.append(best)
             ys_high.append(high)
         ax.plot(xs, ys, marker=group.marker, label=group.legend_caption, color=group.color, zorder=10)
-        ax.fill_between(xs, ys_low, ys_high, alpha=0.1, color=group.color)
+        ax.fill_between(xs, ys_low, ys_high, alpha=0.2, color=group.color)
 
         ax.set_xlabel("Physical Error Rate")
-        ax.set_ylabel("Suppression per Code Distance += 2 (Lambda)")
         ax.set_xlim(1e-4, 2e-2)
         ax.set_ylim(1, 100)
         ax.loglog()
@@ -113,11 +112,21 @@ def make_lambda_plots(
     data = project_intersection_of_both_observables(data)
     grouped = data.grouped_by(lambda e: (e.circuit_style, e.decoder))
 
-    fig, axs = plt.subplots(1, len(groups))
+    fig, axs = plt.subplots(1, len(groups) + 1)
     for k, (name, gs) in enumerate(groups.items()):
         fill_in_single_lambda_plot(grouped, gs, axs[k])
         axs[k].set_title(name)
-    axs[-1].legend()
+    axs[0].set_ylabel("Suppression per Code Distance Step (λ)")
+    for k in range(1, len(groups)):
+        axs[k].set_yticklabels([])
+
+    axs[-1].legend(*axs[-2].get_legend_handles_labels())
+    axs[-1].get_xaxis().set_ticks([])
+    axs[-1].get_yaxis().set_ticks([])
+    axs[-1].spines['top'].set_visible(False)
+    axs[-1].spines['right'].set_visible(False)
+    axs[-1].spines['bottom'].set_visible(False)
+    axs[-1].spines['left'].set_visible(False)
 
     return fig, axs
 

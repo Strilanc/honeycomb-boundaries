@@ -36,8 +36,8 @@ def main():
         'EM3': 'EM3_v2',
     }
     layouts = {
-        'toric (correlated)': ('honeycomb', 'internal_correlated'),
-        'bounded (correlated)': ('bounded_honeycomb_memory', 'internal_correlated'),
+        'periodic honeycomb code\n(correlated decoding)': ('honeycomb', 'internal_correlated'),
+        'planar honeycomb code\n(correlated decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
     }
     groups = {
         gate_set_caption: [
@@ -79,8 +79,14 @@ def make_line_fit_plots(
                 axs[y, 0].set_ylabel(f"{g.legend_caption}\nLogical Error Rate")
                 axs[y, 0].yaxis.label.set_fontsize(14)
         axs[0, k].set_title(name)
-        axs[-1, k].set_xlabel("Width")
-        axs[-1, k].xaxis.label.set_fontsize(14)
+        axs[-1, k].set_xlabel("Patch Width")
+        axs[-1, k].xaxis.label.set_fontsize(10)
+        axs[0, k].title.set_fontsize(14)
+    for k in range(len(groups)):
+        axs[0, k].set_xticklabels([])
+    for k in range(1, len(groups)):
+        axs[0, k].set_yticklabels([])
+        axs[1, k].set_yticklabels([])
 
     axs[0, -1].legend(*axs[0, 0].get_legend_handles_labels(), loc="upper left", title="Physical Error Rate")
     axs[0, -1].get_xaxis().set_ticks([])
@@ -100,7 +106,7 @@ def fill_in_line_fit_plot(
     noise_style: Dict[float, Tuple[Any, Any]],
 ):
     stats = grouped_projected_data.get((group.filter_circuit_style, group.filter_decoder), MultiStats({}))
-    for noise, noise_stats in stats.grouped_by(lambda e: e.noise).items():
+    for noise, noise_stats in stats.grouped_by(lambda e: e.noise, reverse=True).items():
         xs = []
         ys = []
         for x, group_stats in noise_stats.grouped_by(lambda e: e.data_width).items():
@@ -124,7 +130,7 @@ def fill_in_line_fit_plot(
                 ax.plot(xb, yb, linestyle='dashed', color=color, zorder=9)
 
     ax.set_xlim(1, 25)
-    ax.set_ylim(1e-6, 1e-0)
+    ax.set_ylim(1e-12, 1e-0)
     ax.semilogy()
     ax.grid(which='minor', color='#AAAAAA')
     ax.grid(which='major', color='black')
