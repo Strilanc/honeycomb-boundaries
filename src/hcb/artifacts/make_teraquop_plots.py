@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 from scipy.stats import linregress
 
 from hcb.artifacts.make_lambda_plots import DesiredLineFit, project_intersection_of_both_observables
+from hcb.codes.honeycomb.layout import HoneycombLayout
 from hcb.tools.analysis.collecting import read_recorded_data, MultiStats, DecodingProblemDesc
 from hcb.tools.analysis.probability_util import least_squares_output_range
 
-OUT_DIR = pathlib.Path("../../../out/").resolve()
+OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
 MARKERS = "ov*sp^<>8PhH+xXDd|" * 100
 COLORS = list(mcolors.TABLEAU_COLORS) * 3
@@ -70,43 +71,33 @@ def make_teraquop_plots(
     data = project_intersection_of_both_observables(data)
     grouped = data.grouped_by(lambda e: (e.circuit_style, e.decoder))
 
+    axs: List[plt.Axes]
     fig, axs = plt.subplots(1, len(groups))
     for k, (name, gs) in enumerate(groups.items()):
         fill_in_single_teraquop_plot(grouped, gs, axs[k])
         axs[k].set_title(name)
+    for k in range(1, len(groups)):
+        axs[k].set_yticklabels([])
+    axs[0].set_ylabel("Teraquop Qubit Count")
     axs[-1].legend()
+    axs[0].yaxis.label.set_fontsize(14)
 
     return fig, axs
 
 
-def extrapolate_qubit_count(*,
-                            starts: List[DecodingProblemDesc],
-                            new_distance: float) -> int:
-    style, = {e.circuit_style for e in starts}
-    if style.startswith("bounded_honeycomb_memory_"):
-        quant = 2
-    elif style.startswith("honeycomb_"):
-        quant = 4
-    else:
-        raise NotImplementedError()
-    a, b, c = np.polyfit([e.data_width for e in starts], [e.num_qubits for e in starts], 2)
-    d = math.ceil(new_distance / quant) * quant
-    return d*d*a + d*b + c
-
-
 def teraquop_intercept_range(*,
                              starts: List[DecodingProblemDesc],
-                             xs: List[float],
-                             ys: List[float]) -> Tuple[float, float, float]:
-    assert len(xs) > 1
-    assert len(xs) == len(ys)
+                             distances: List[float],
+                             log_error_rates: List[float]) -> Tuple[float, float, float]:
+    assert len(distances) > 1
+    assert len(distances) == len(log_error_rates)
     dlow, dmid, dhigh = least_squares_output_range(
-        xs=ys,
-        ys=xs,
+        xs=log_error_rates,
+        ys=distances,
         target_x=math.log(1e-12),
         cost_increase=1)
     qlow, qmid, qhigh = [
-        extrapolate_qubit_count(starts=starts, new_distance=d)
+        extrapolate_num_qubits(bases=starts, new_code_distance=d)
         for d in (dlow, dmid, dhigh)
     ]
     return qlow, qmid, qhigh
@@ -125,7 +116,7 @@ def fill_in_single_teraquop_plot(
         ys_high = []
         for noise, noise_stats in stats.grouped_by(lambda e: e.noise).items():
             linefit_xs, linefit_ys = noise_stats.after_discarding_degenerates().to_xs_ys(
-                x_func=lambda e: e.data_width,
+                x_func=lambda e: e.code_distance,
                 y_func=lambda e: math.log(e.logical_error_rate),
             )
             if len(linefit_xs) < 2:
@@ -135,8 +126,8 @@ def fill_in_single_teraquop_plot(
 
             low, best, high = teraquop_intercept_range(
                 starts=list(noise_stats.data.keys()),
-                xs=linefit_xs,
-                ys=linefit_ys)
+                distances=linefit_xs,
+                log_error_rates=linefit_ys)
             xs.append(noise)
             ys_low.append(low)
             ys.append(best)
@@ -145,12 +136,40 @@ def fill_in_single_teraquop_plot(
         ax.fill_between(xs, ys_low, ys_high, alpha=0.1, color=group.color)
 
         ax.set_xlabel("Physical Error Rate")
-        ax.set_ylabel("Teraquop Qubit Count")
         ax.set_xlim(1e-4, 2e-2)
         ax.set_ylim(100, 100_000)
         ax.loglog()
         ax.grid(which='minor', color='#AAAAAA')
         ax.grid(which='major', color='black')
+
+
+def extrapolate_num_qubits(*,
+                           bases: List[DecodingProblemDesc],
+                           new_code_distance: float):
+    # Switch to quadratic fit for big patches.
+    basis = bases[0]
+    if basis.circuit_style.startswith("bounded_honeycomb_memory_"):
+        g = basis.circuit_style.split("bounded_honeycomb_memory_")[-1]
+        w, h = HoneycombLayout.unsheared_size_for_code_distance(
+            distance=math.ceil(new_code_distance),
+            gate_set=g)
+        return HoneycombLayout(
+            data_width=w,
+            data_height=h,
+            rounds=10,
+            noise_level=0,
+            noisy_gate_set=g,
+            tested_observable='H',
+            sheared=False
+        ).num_used_qubits()
+    elif basis.circuit_style in ["honeycomb_EM3_v2", "honeycomb_EM3"]:
+        d = math.ceil(new_code_distance / 4)
+        return d * d * 24
+    elif basis.circuit_style in ["honeycomb_SD6", "honeycomb_SI1000"]:
+        d = math.ceil(new_code_distance / 4)
+        return d * d * 60
+    else:
+        raise NotImplementedError(f'{basis.circuit_style=}')
 
 
 if __name__ == '__main__':

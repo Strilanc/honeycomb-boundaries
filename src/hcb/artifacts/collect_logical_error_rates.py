@@ -1,9 +1,11 @@
+import math
 import pathlib
 from typing import Iterator, List
 
 from hcb.codes.honeycomb.layout import HoneycombLayout
-from hcb.tools.analysis.collecting import collect_simulated_experiment_data, read_recorded_data, DecodingProblem
-from hcb.tools.analysis.plotting import plot_data
+from hcb.tools.analysis.collecting import collect_simulated_experiment_data, DecodingProblem
+
+OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
 
 def iter_problems(decoders: List[str]) -> Iterator[DecodingProblem]:
@@ -39,31 +41,33 @@ def iter_problems(decoders: List[str]) -> Iterator[DecodingProblem]:
         # 'EPR',
     ]
     distances = [
-        4,
-        8,
-        12,
-        # 16,
-        # 20,
+        3,
+        5,
+        7,
+        9,
+        11,
     ]
     for p in error_rates:
         for noisy_gate_set in gate_sets:
             for d in distances:
+                w, h = HoneycombLayout.unsheared_size_for_code_distance(distance=d,
+                                                                        gate_set=noisy_gate_set)
                 for sheared in shearings:
                     for decoder in decoders:
                         for obs in observables:
                             yield HoneycombLayout(
-                                data_width=d,
-                                data_height=(d * 2 + 2) // 3 * 3,
+                                data_width=w,
+                                data_height=h,
                                 noise_level=p,
                                 noisy_gate_set=noisy_gate_set,
                                 tested_observable=obs,
                                 sheared=sheared,
-                                rounds=d * 3,
+                                rounds=math.ceil(d * 3 / 2) * 2,
                             ).to_decoding_problem(decoder=decoder)
 
 
 def main():
-    data_file = pathlib.Path("../out/data_third.csv").resolve()
+    data_file = OUT_DIR / 'data_fourth.csv'
 
     collect_simulated_experiment_data(
         iter_problems(decoders=["internal", "internal_correlated"]),
@@ -75,14 +79,6 @@ def main():
         max_errors=1000,
         num_threads=6,
     )
-
-    stats = read_recorded_data(data_file)
-    stats = stats.filter(lambda e: 'SD6' in e.circuit_style and 'sheared' not in e.circuit_style and e.data_width > 2)
-    plot_data(stats,
-              show=True,
-              title="Memory",
-              x_max=1,
-              y_max=1)
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from hcb.artifacts.make_lambda_plots import DesiredLineFit, project_intersection_of_both_observables
 from hcb.tools.analysis.collecting import read_recorded_data, MultiStats
 
-OUT_DIR = pathlib.Path("../../../out/").resolve()
+OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
 MARKERS = "ov*sp^<>8PhH+xXDd|" * 100
 COLORS = list(mcolors.TABLEAU_COLORS) * 3

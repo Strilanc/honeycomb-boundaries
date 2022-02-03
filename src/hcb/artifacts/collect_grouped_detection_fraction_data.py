@@ -7,7 +7,7 @@ from hcb.codes.honeycomb.layout import HoneycombLayout
 from hcb.tools.analysis.collecting import DecodingProblem, CSV_HEADER, \
     CSV_HEADER_VERSION
 
-OUT_DIR = pathlib.Path("../../../out/").resolve()
+OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
 
 

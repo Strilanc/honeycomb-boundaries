@@ -74,8 +74,7 @@ def test_graphlike_code_distances(*,
                              tested_observable=tested_observable)
     circuit = layout.noisy_circuit()
 
-    dem = circuit.detector_error_model(decompose_errors=False)
-    err = dem.shortest_graphlike_error(ignore_ungraphlike_errors=True)
+    err = circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True)
     assert len(err) == ignored_graphlike_code_distance, "ignored"
 
     dem = circuit.detector_error_model(decompose_errors=True)
@@ -117,7 +116,7 @@ def test_exact_circuit_EM3_v1_H():
         DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
         DEPOLARIZE2(0.125) 2 1 8 7
         MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
-        OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
         DETECTOR(1.5, 4, 0) rec[-8] rec[-6] rec[-3]
         DETECTOR(2.5, 1, 0) rec[-7] rec[-2]
         DETECTOR(0.5, 1, 0) rec[-10] rec[-9] rec[-4]
@@ -127,7 +126,7 @@ def test_exact_circuit_EM3_v1_H():
         DEPOLARIZE1(0.125) 0 1 9 11
         DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
         MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
-        OBSERVABLE_INCLUDE(1) rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-1]
         SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
@@ -138,7 +137,7 @@ def test_exact_circuit_EM3_v1_H():
         DEPOLARIZE1(0.125) 0 1 9 11
         DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
         MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
-        OBSERVABLE_INCLUDE(1) rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-1]
         DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
         DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
         DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
@@ -147,7 +146,7 @@ def test_exact_circuit_EM3_v1_H():
         DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
         DEPOLARIZE2(0.125) 2 1 8 7
         MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
-        OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
         DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
         DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
         SHIFT_COORDS(0, 0, 1)
@@ -160,7 +159,7 @@ def test_exact_circuit_EM3_v1_H():
             DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
             DEPOLARIZE2(0.125) 2 1 8 7
             MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
-            OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
+            OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
             DETECTOR(1.5, 4, 0) rec[-24] rec[-22] rec[-19] rec[-8] rec[-6] rec[-3]
             DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
             DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
@@ -170,7 +169,7 @@ def test_exact_circuit_EM3_v1_H():
             DEPOLARIZE1(0.125) 0 1 9 11
             DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
             MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
-            OBSERVABLE_INCLUDE(1) rec[-2]
+            OBSERVABLE_INCLUDE(1) rec[-1]
             SHIFT_COORDS(0, 0, 1)
             TICK
             DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
@@ -181,7 +180,7 @@ def test_exact_circuit_EM3_v1_H():
             DEPOLARIZE1(0.125) 0 1 9 11
             DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
             MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
-            OBSERVABLE_INCLUDE(1) rec[-2]
+            OBSERVABLE_INCLUDE(1) rec[-1]
             DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
             DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
             DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
@@ -190,13 +189,12 @@ def test_exact_circuit_EM3_v1_H():
             DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
             DEPOLARIZE2(0.125) 2 1 8 7
             MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
-            OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
+            OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
             DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
             DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
             SHIFT_COORDS(0, 0, 1)
             TICK
         }
-        TICK
         DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
         MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
         SHIFT_COORDS(0, 0, 1)
@@ -204,7 +202,7 @@ def test_exact_circuit_EM3_v1_H():
         DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
         DEPOLARIZE2(0.125) 2 1 8 7
         MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
-        OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
         DETECTOR(1.5, 4, 0) rec[-24] rec[-22] rec[-19] rec[-8] rec[-6] rec[-3]
         DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
         DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
@@ -214,7 +212,7 @@ def test_exact_circuit_EM3_v1_H():
         DEPOLARIZE1(0.125) 0 1 9 11
         DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
         MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
-        OBSERVABLE_INCLUDE(1) rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-1]
         SHIFT_COORDS(0, 0, 1)
         TICK
         DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
@@ -225,7 +223,7 @@ def test_exact_circuit_EM3_v1_H():
         DEPOLARIZE1(0.125) 0 1 9 11
         DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
         MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
-        OBSERVABLE_INCLUDE(1) rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-1]
         DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
         DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
         DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
@@ -234,7 +232,7 @@ def test_exact_circuit_EM3_v1_H():
         DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
         DEPOLARIZE2(0.125) 2 1 8 7
         MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
-        OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
         DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
         DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
         SHIFT_COORDS(0, 0, 1)
@@ -252,7 +250,7 @@ def test_exact_circuit_EM3_v1_H():
         DETECTOR(2.5, 2, 0) rec[-14] rec[-6]
         DETECTOR(3.5, 5, 0) rec[-13] rec[-1]
         DETECTOR(1.5, 2, 0) rec[-36] rec[-35] rec[-31] rec[-28] rec[-27] rec[-24] rec[-10] rec[-9] rec[-8] rec[-7] rec[-6] rec[-5]
-        OBSERVABLE_INCLUDE(1) rec[-10] rec[-9] rec[-7] rec[-6]
+        OBSERVABLE_INCLUDE(1) rec[-4] rec[-3] rec[-2] rec[-1]
         TICK
     """)
 
@@ -520,7 +518,6 @@ def test_exact_circuit_SD6_V():
             DEPOLARIZE1(0.125) 2 3 5 7 9 11 12 16 17 20 23 26 31 32
             TICK
         }
-        TICK
         R 13 14 18 21 24 27 28 30 34 35
         CX 2 15 5 19 7 22 9 25 3 29 11 33
         C_ZYX 0 1 4 6 8 10
@@ -724,14 +721,14 @@ def test_exact_circuit_SI1000_V():
         M 15 19 22 25 29 33
         SHIFT_COORDS(0, 0, 1)
         M 13 14 18 21 24 27 28 30 34 35
-        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
         DETECTOR(2.5, 1, 0) rec[-6] rec[-1]
         DETECTOR(1.5, 4, 0) rec[-7] rec[-5] rec[-2]
         DETECTOR(-0.5, 4, 0) rec[-9] rec[-4]
         DETECTOR(0.5, 1, 0) rec[-10] rec[-8] rec[-3]
         SHIFT_COORDS(0, 0, 1)
         M 12 16 17 20 23 26 31 32
-        OBSERVABLE_INCLUDE(1) rec[-1]
+        OBSERVABLE_INCLUDE(1) rec[-2]
         SHIFT_COORDS(0, 0, 1)
         DEPOLARIZE1(0.0125) 0 1 2 3 4 5 6 7 8 9 10 11
         DEPOLARIZE1(0.25) 0 1 2 3 4 5 6 7 8 9 10 11
@@ -782,13 +779,13 @@ def test_exact_circuit_SI1000_V():
         DETECTOR(1.5, 2, 0) rec[-11] rec[-9] rec[-7] rec[-5] rec[-3] rec[-1]
         SHIFT_COORDS(0, 0, 1)
         M 12 16 17 20 23 26 31 32
-        OBSERVABLE_INCLUDE(1) rec[-1]
+        OBSERVABLE_INCLUDE(1) rec[-2]
         DETECTOR(1.5, 2, 0) rec[-19] rec[-17] rec[-15] rec[-5] rec[-3] rec[-1]
         DETECTOR(0.5, 5, 0) rec[-21] rec[-18] rec[-16] rec[-7] rec[-4] rec[-2]
         DETECTOR(0.5, -1, 0) rec[-22] rec[-20] rec[-8] rec[-6]
         SHIFT_COORDS(0, 0, 1)
         M 13 14 18 21 24 27 28 30 34 35
-        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
         DETECTOR(2.5, 3, 0) rec[-37] rec[-33] rec[-27] rec[-13] rec[-5] rec[-1]
         DETECTOR(0.5, 3, 0) rec[-41] rec[-39] rec[-35] rec[-29] rec[-26] rec[-15] rec[-12] rec[-9] rec[-7] rec[-3]
         SHIFT_COORDS(0, 0, 1)
@@ -840,14 +837,14 @@ def test_exact_circuit_SI1000_V():
             M 15 19 22 25 29 33
             SHIFT_COORDS(0, 0, 1)
             M 13 14 18 21 24 27 28 30 34 35
-            OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+            OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
             DETECTOR(2.5, 1, 0) rec[-22] rec[-17] rec[-6] rec[-1]
             DETECTOR(1.5, 4, 0) rec[-23] rec[-21] rec[-18] rec[-7] rec[-5] rec[-2]
             DETECTOR(-0.5, 4, 0) rec[-25] rec[-20] rec[-9] rec[-4]
             DETECTOR(0.5, 1, 0) rec[-26] rec[-24] rec[-19] rec[-10] rec[-8] rec[-3]
             SHIFT_COORDS(0, 0, 1)
             M 12 16 17 20 23 26 31 32
-            OBSERVABLE_INCLUDE(1) rec[-1]
+            OBSERVABLE_INCLUDE(1) rec[-2]
             SHIFT_COORDS(0, 0, 1)
             DEPOLARIZE1(0.0125) 0 1 2 3 4 5 6 7 8 9 10 11
             DEPOLARIZE1(0.25) 0 1 2 3 4 5 6 7 8 9 10 11
@@ -898,13 +895,13 @@ def test_exact_circuit_SI1000_V():
             DETECTOR(1.5, 2, 0) rec[-53] rec[-51] rec[-49] rec[-45] rec[-43] rec[-41] rec[-11] rec[-9] rec[-7] rec[-5] rec[-3] rec[-1]
             SHIFT_COORDS(0, 0, 1)
             M 12 16 17 20 23 26 31 32
-            OBSERVABLE_INCLUDE(1) rec[-1]
+            OBSERVABLE_INCLUDE(1) rec[-2]
             DETECTOR(1.5, 2, 0) rec[-19] rec[-17] rec[-15] rec[-5] rec[-3] rec[-1]
             DETECTOR(0.5, 5, 0) rec[-21] rec[-18] rec[-16] rec[-7] rec[-4] rec[-2]
             DETECTOR(0.5, -1, 0) rec[-22] rec[-20] rec[-8] rec[-6]
             SHIFT_COORDS(0, 0, 1)
             M 13 14 18 21 24 27 28 30 34 35
-            OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+            OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
             DETECTOR(2.5, 3, 0) rec[-37] rec[-33] rec[-27] rec[-13] rec[-5] rec[-1]
             DETECTOR(0.5, 3, 0) rec[-41] rec[-39] rec[-35] rec[-29] rec[-26] rec[-15] rec[-12] rec[-9] rec[-7] rec[-3]
             SHIFT_COORDS(0, 0, 1)
@@ -912,7 +909,6 @@ def test_exact_circuit_SI1000_V():
             DEPOLARIZE1(0.25) 0 1 2 3 4 5 6 7 8 9 10 11
             TICK
         }
-        TICK
         R 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
         X_ERROR(0.25) 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
         DEPOLARIZE1(0.0125) 0 1 2 3 4 5 6 7 8 9 10 11
@@ -957,14 +953,14 @@ def test_exact_circuit_SI1000_V():
         M 15 19 22 25 29 33
         SHIFT_COORDS(0, 0, 1)
         M 13 14 18 21 24 27 28 30 34 35
-        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
         DETECTOR(2.5, 1, 0) rec[-22] rec[-17] rec[-6] rec[-1]
         DETECTOR(1.5, 4, 0) rec[-23] rec[-21] rec[-18] rec[-7] rec[-5] rec[-2]
         DETECTOR(-0.5, 4, 0) rec[-25] rec[-20] rec[-9] rec[-4]
         DETECTOR(0.5, 1, 0) rec[-26] rec[-24] rec[-19] rec[-10] rec[-8] rec[-3]
         SHIFT_COORDS(0, 0, 1)
         M 12 16 17 20 23 26 31 32
-        OBSERVABLE_INCLUDE(1) rec[-1]
+        OBSERVABLE_INCLUDE(1) rec[-2]
         SHIFT_COORDS(0, 0, 1)
         DEPOLARIZE1(0.0125) 0 1 2 3 4 5 6 7 8 9 10 11
         DEPOLARIZE1(0.25) 0 1 2 3 4 5 6 7 8 9 10 11
@@ -1014,13 +1010,13 @@ def test_exact_circuit_SI1000_V():
         DETECTOR(1.5, 2, 0) rec[-53] rec[-51] rec[-49] rec[-45] rec[-43] rec[-41] rec[-11] rec[-9] rec[-7] rec[-5] rec[-3] rec[-1]
         SHIFT_COORDS(0, 0, 1)
         M 12 16 17 20 23 26 31 32
-        OBSERVABLE_INCLUDE(1) rec[-1]
+        OBSERVABLE_INCLUDE(1) rec[-2]
         DETECTOR(1.5, 2, 0) rec[-19] rec[-17] rec[-15] rec[-5] rec[-3] rec[-1]
         DETECTOR(0.5, 5, 0) rec[-21] rec[-18] rec[-16] rec[-7] rec[-4] rec[-2]
         DETECTOR(0.5, -1, 0) rec[-22] rec[-20] rec[-8] rec[-6]
         SHIFT_COORDS(0, 0, 1)
         M 13 14 18 21 24 27 28 30 34 35
-        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        OBSERVABLE_INCLUDE(1) rec[-4] rec[-2]
         DETECTOR(2.5, 3, 0) rec[-37] rec[-33] rec[-27] rec[-13] rec[-5] rec[-1]
         DETECTOR(0.5, 3, 0) rec[-41] rec[-39] rec[-35] rec[-29] rec[-26] rec[-15] rec[-12] rec[-9] rec[-7] rec[-3]
         SHIFT_COORDS(0, 0, 1)
@@ -1036,6 +1032,6 @@ def test_exact_circuit_SI1000_V():
         DETECTOR(1.5, 5, 0) rec[-14] rec[-4]
         DETECTOR(2.5, 2, 0) rec[-13] rec[-2]
         DETECTOR(1.5, 2, 0) rec[-35] rec[-33] rec[-31] rec[-27] rec[-25] rec[-23] rec[-8] rec[-7] rec[-6] rec[-3] rec[-2] rec[-1]
-        OBSERVABLE_INCLUDE(1) rec[-8] rec[-7] rec[-3] rec[-2]
+        OBSERVABLE_INCLUDE(1) rec[-11] rec[-10] rec[-5] rec[-4]
         TICK
     """)

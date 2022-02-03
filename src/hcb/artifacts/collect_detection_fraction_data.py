@@ -4,8 +4,7 @@ from typing import Iterator
 from hcb.codes.honeycomb.layout import HoneycombLayout
 from hcb.tools.analysis.collecting import DecodingProblem, collect_detection_fraction_data
 
-OUT_DIR = pathlib.Path("../../../out/").resolve()
-
+OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
 
 def iter_problems(decoder: str) -> Iterator[DecodingProblem]:

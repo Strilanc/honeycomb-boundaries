@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from hcb.tools.analysis.collecting import read_recorded_data, MultiStats
 from hcb.tools.analysis.probability_util import least_squares_slope_range
 
-OUT_DIR = pathlib.Path("../../../out/").resolve()
+OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
 MARKERS = "ov*sp^<>8PhH+xXDd|" * 100
 COLORS = list(mcolors.TABLEAU_COLORS) * 3
@@ -141,6 +141,8 @@ def project_intersection_of_both_observables(stats: MultiStats) -> MultiStats:
             h, v = x, z
 
         if h is not None and v is not None:
+            if v.logical_error_rate:
+                print(k.circuit_style, k.data_width, h.logical_error_rate / v.logical_error_rate)
             result.data[k] = h.extrapolate_intersection(v)
         elif h is not None:
             print(f"WARNING EXTRAPOLATING V OBSERVABLE DATA POINT FOR {k}", file=sys.stderr, flush=True)

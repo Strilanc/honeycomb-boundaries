@@ -21,9 +21,9 @@ def produce_code_distance_latex_table() -> str:
             else:
                 entries[x + 1 + y*1j].append(f'$w={v}$')
         y += 1
-        for gate_set in ['EM3_v2', 'SD6', 'SI1000']:
-            for sheared in [True, False]:
-                s = '(tilt) ' if sheared else ''
+        for sheared in [False, True]:
+            for gate_set in ['SD6', 'SI1000', 'EM3_v2']:
+                s = '(sheared) ' if sheared else ''
                 g = gate_set.replace('EM3_v2', 'EM3')
                 entries[y * 1j].append(f'{s}{g}')
                 for x, v in enumerate(vals):

@@ -255,20 +255,36 @@ class HoneycombLayout:
 
 
     @staticmethod
-    def from_code_distance(*,
-                           distance: int,
-                           rounds: int,
-                           noise_level: float,
-                           noisy_gate_set: str,
-                           tested_observable: str):
-        assert distance % 2 == 0
-        return HoneycombLayout(
-            data_width=distance,
-            data_height=(distance // 2) * 3,
-            rounds=rounds,
-            noise_level=noise_level,
-            noisy_gate_set=noisy_gate_set,
-            tested_observable=tested_observable)
+    def unsheared_size_for_code_distance(distance: int,
+                                         gate_set: str) -> Tuple[int, int]:
+        if gate_set in ['EM3', 'EM3_v2']:
+            return distance * 2, distance * 3
+        if gate_set in ['SD6', 'SI1000']:
+            w = distance + 1
+            h = distance * 2
+            while h % 3:
+                h += 1
+            assert h % 3 == 0, str(h)
+            return w, h
+        raise NotImplementedError()
+
+    def horizontal_graphlike_code_distance(self) -> int:
+        if self.noisy_gate_set in ['EM3', 'EM3_v2']:
+            return self.data_width // 2
+        if self.noisy_gate_set in ['SD6', 'SI1000']:
+            return self.data_width - 1
+        raise NotImplementedError()
+
+    def vertical_graphlike_code_distance(self) -> int:
+        if self.noisy_gate_set in ['EM3', 'EM3_v2']:
+            return self.data_height // 3
+        if self.noisy_gate_set in ['SD6', 'SI1000']:
+            return self.data_height // 2
+        raise NotImplementedError()
+
+    def graphlike_code_distance(self) -> int:
+        return min(self.horizontal_graphlike_code_distance(),
+                   self.vertical_graphlike_code_distance())
 
     @functools.cached_property
     def measurement_qubit_set(self) -> FrozenSet[complex]:
@@ -683,6 +699,26 @@ class HoneycombLayout:
         maker.process()
         return maker.final_noisy_circuit()
 
+    def num_data_qubits(self) -> int:
+        result = self.data_width * self.data_height
+        if result % 2 == 1:
+            result -= 1
+        return result
+
+    def num_used_qubits(self) -> int:
+        if self.noisy_gate_set in ["EM3", 'EM3_v2']:
+            return self.num_data_qubits()
+        if self.noisy_gate_set in ["SD6", 'SI1000']:
+            nd = self.num_data_qubits()
+            nm = nd // 2 * 3
+            nm += self.data_width
+            nm += self.data_height
+            nm -= self.data_height // 3
+            if self.data_width % 2 == 1 and self.data_height % 6 == 0:
+                nm += 1
+            return nm + nd
+        raise NotImplementedError()
+
     def to_decoding_desc(self, *, decoder: str) -> DecodingProblemDesc:
         style = 'bounded_honeycomb_memory'
         if self.sheared:
@@ -691,8 +727,8 @@ class HoneycombLayout:
         return DecodingProblemDesc(
             data_width=self.data_width,
             data_height=self.data_height,
-            code_distance=min(self.data_width, self.data_height // 3 * 2),
-            num_qubits=len(self.data_qubit_set) if self.noisy_gate_set.startswith("EM3") else len(self.all_qubits_set),
+            code_distance=self.graphlike_code_distance(),
+            num_qubits=self.num_used_qubits(),
             rounds=self.rounds,
             noise=self.noise_level,
             circuit_style=style,
