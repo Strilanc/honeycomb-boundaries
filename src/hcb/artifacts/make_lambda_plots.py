@@ -141,8 +141,6 @@ def project_intersection_of_both_observables(stats: MultiStats) -> MultiStats:
             h, v = x, z
 
         if h is not None and v is not None:
-            if v.logical_error_rate:
-                print(k.circuit_style, k.data_width, h.logical_error_rate / v.logical_error_rate)
             result.data[k] = h.extrapolate_intersection(v)
         elif h is not None:
             print(f"WARNING EXTRAPOLATING V OBSERVABLE DATA POINT FOR {k}", file=sys.stderr, flush=True)
