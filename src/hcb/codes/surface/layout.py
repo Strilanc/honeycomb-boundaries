@@ -254,16 +254,16 @@ def rect_surface_code_init_circuit(*,
         obs1 = all_obs.logical(match.group(2))
 
         # Need-noiseless initialization by direct measurement of stabilizers and observables.
-        circuit.append_operation("MPP", obs0.mpp_targets(q2i=q2i, extra_xs=(EPR_ANCILLA_LOC,)))
-        circuit.append_operation("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 0)
-        circuit.append_operation("MPP", obs1.mpp_targets(q2i=q2i, extra_zs=(EPR_ANCILLA_LOC,)))
-        circuit.append_operation("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 1)
+        circuit.append("MPP", obs0.mpp_targets(q2i=q2i, extra_xs=(EPR_ANCILLA_LOC,)))
+        circuit.append("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 0)
+        circuit.append("MPP", obs1.mpp_targets(q2i=q2i, extra_zs=(EPR_ANCILLA_LOC,)))
+        circuit.append("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 1)
         layout.do_mpp_measurements(out_circuit=circuit, q2i=q2i, tracker=tracker)
 
     elif basis == "frayed_Y":
         # Need-noiseless initialization by direct measurement of stabilizers and observables.
-        circuit.append_operation("MPP", all_obs.logical_y.mpp_targets(q2i=q2i))
-        circuit.append_operation("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 0)
+        circuit.append("MPP", all_obs.logical_y.mpp_targets(q2i=q2i))
+        circuit.append("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 0)
         layout.do_mpp_measurements(out_circuit=circuit, q2i=q2i, tracker=tracker)
 
     else:
@@ -316,7 +316,7 @@ def rect_surface_code_measure_circuit(*,
                                         coords=[e.measurement_qubit.real, e.measurement_qubit.imag, 0])
         obs = all_obs.logical_x if basis == "transversal_X" else all_obs.logical_z
         if include_obs:
-            circuit.append_operation(
+            circuit.append(
                 "OBSERVABLE_INCLUDE",
                 tracker.get_record_targets(*obs.all_qs()),
                 0)
@@ -333,10 +333,10 @@ def rect_surface_code_measure_circuit(*,
             detect_vs_prev=True)
 
         if include_obs:
-            circuit.append_operation("MPP", obs0.mpp_targets(q2i=q2i, extra_xs=(EPR_ANCILLA_LOC,)))
-            circuit.append_operation("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 0)
-            circuit.append_operation("MPP", obs1.mpp_targets(q2i=q2i, extra_zs=(EPR_ANCILLA_LOC,)))
-            circuit.append_operation("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 1)
+            circuit.append("MPP", obs0.mpp_targets(q2i=q2i, extra_xs=(EPR_ANCILLA_LOC,)))
+            circuit.append("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 0)
+            circuit.append("MPP", obs1.mpp_targets(q2i=q2i, extra_zs=(EPR_ANCILLA_LOC,)))
+            circuit.append("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 1)
     elif basis == "frayed_Y":
         # Need-noiseless measurement by direct measurement of stabilizers and observables.
         layout.do_mpp_measurements(
@@ -346,8 +346,8 @@ def rect_surface_code_measure_circuit(*,
             detect_vs_prev=True)
 
         if include_obs:
-            circuit.append_operation("MPP", all_obs.logical_y.mpp_targets(q2i=q2i))
-            circuit.append_operation("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 0)
+            circuit.append("MPP", all_obs.logical_y.mpp_targets(q2i=q2i))
+            circuit.append("OBSERVABLE_INCLUDE", [stim.target_rec(-1)], 0)
     else:
         raise NotImplementedError(f"{basis=!r}")
 

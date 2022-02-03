@@ -99,4 +99,4 @@ class MeasurementTracker:
         targets = self.get_record_targets(*keys, for_time_after_measurement=for_time_after_measurement)
         if targets is None:
             return
-        out_circuit.append_operation("DETECTOR", targets, coords)
+        out_circuit.append("DETECTOR", targets, coords)

@@ -128,9 +128,9 @@ class CircuitCanvas:
 
         for t in range(num_t):
             if t:
-                circuit.append_operation("TICK")
+                circuit.append("TICK")
             for gate in sorted(moments[t].keys()):
-                circuit.append_operation(gate, moments[t][gate])
+                circuit.append(gate, moments[t][gate])
 
         return circuit
 
@@ -149,7 +149,7 @@ def indexed_qubits_circuit_dict(positions: Iterable[complex]) -> Tuple[stim.Circ
     q2i = {q: i for i, q in enumerate(sorted(positions, key=complex_key))}
     circuit = stim.Circuit()
     for q, i in q2i.items():
-        circuit.append_operation("QUBIT_COORDS", [i], [q.real, q.imag])
+        circuit.append("QUBIT_COORDS", [i], [q.real, q.imag])
     return circuit, q2i
 
 

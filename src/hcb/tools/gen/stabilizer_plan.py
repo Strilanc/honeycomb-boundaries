@@ -47,7 +47,7 @@ def append_mpp(*,
         int_targets.append(stim.target_combiner())
     int_targets.pop()
 
-    out_circuit.append_operation("MPP", int_targets, noise if noise else [])
+    out_circuit.append("MPP", int_targets, noise if noise else [])
 
 
 @dataclasses.dataclass(frozen=True, unsafe_hash=True)
@@ -188,18 +188,18 @@ class StabilizerPlan:
         reset_ys = tuple(sorted(reset_ys, key=complex_key))
         reset_zs = tuple(sorted(reset_zs, key=complex_key))
         if reset_xs or reset_ys or reset_zs:
-            body.append_operation("R", [q2i[q] for q in reset_xs + reset_ys + reset_zs])
+            body.append("R", [q2i[q] for q in reset_xs + reset_ys + reset_zs])
             if noise:
-                body.append_operation("DEPOLARIZE1", sorted(q2i.values()), noise)
+                body.append("DEPOLARIZE1", sorted(q2i.values()), noise)
             if tick:
-                body.append_operation("TICK")
+                body.append("TICK")
         if reset_xs or reset_ys:
-            body.append_operation("H", [q2i[q] for q in reset_xs])
-            body.append_operation("H_YZ", [q2i[q] for q in reset_ys])
+            body.append("H", [q2i[q] for q in reset_xs])
+            body.append("H_YZ", [q2i[q] for q in reset_ys])
             if noise:
-                body.append_operation("DEPOLARIZE1", sorted(q2i.values()), noise)
+                body.append("DEPOLARIZE1", sorted(q2i.values()), noise)
             if tick:
-                body.append_operation("TICK")
+                body.append("TICK")
 
         if reps == 0:
             if out_circuit is not None:
@@ -220,10 +220,10 @@ class StabilizerPlan:
                                         out_circuit=body,
                                         coords=[m.real, m.imag, 0])
         if noise:
-            body.append_operation("DEPOLARIZE1", sorted(q2i.values()), noise)
+            body.append("DEPOLARIZE1", sorted(q2i.values()), noise)
         if tick:
-            body.append_operation("TICK")
-            body.append_operation("SHIFT_COORDS", [], [0, 0, 1])
+            body.append("TICK")
+            body.append("SHIFT_COORDS", [], [0, 0, 1])
 
         if reps > 1:
             if initial_detect_vs_exceptions:
@@ -285,7 +285,7 @@ class StabilizerPlan:
                                             Prev(e.measurement_qubit),
                                             out_circuit=out_circuit,
                                             coords=[e.measurement_qubit.real, e.measurement_qubit.imag, 0])
-        out_circuit.append_operation("SHIFT_COORDS", [], [0, 0, 1])
+        out_circuit.append("SHIFT_COORDS", [], [0, 0, 1])
         return out_circuit
 
     def bounding_box(self) -> Tuple[complex, complex]:

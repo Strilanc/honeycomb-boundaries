@@ -96,14 +96,14 @@ class NoiseModel:
         args = op.gate_args_copy()
         if p > 0:
             if op.name in ANY_CLIFFORD_1_OPS:
-                post.append_operation("DEPOLARIZE1", targets, p)
+                post.append("DEPOLARIZE1", targets, p)
             elif op.name in ANY_CLIFFORD_2_OPS:
-                post.append_operation("DEPOLARIZE2", targets, p)
+                post.append("DEPOLARIZE2", targets, p)
             elif op.name in RESET_OPS or op.name in MEASURE_OPS:
                 if op.name in RESET_OPS:
-                    post.append_operation("Z_ERROR" if op.name.endswith("X") else "X_ERROR", targets, p)
+                    post.append("Z_ERROR" if op.name.endswith("X") else "X_ERROR", targets, p)
                 if op.name in MEASURE_OPS:
-                    pre.append_operation("Z_ERROR" if op.name.endswith("X") else "X_ERROR", targets, p)
+                    pre.append("Z_ERROR" if op.name.endswith("X") else "X_ERROR", targets, p)
             elif op.name == "MPP":
                 groups = group_mpp_targets(targets)
                 assert all(len(g) in [1, 2] for g in groups)
@@ -121,23 +121,23 @@ class NoiseModel:
                         else:
                             assert len(g) == 1
                             if g[0].is_x_target:
-                                pre.append_operation("Z_ERROR", g[0].value, p)
+                                pre.append("Z_ERROR", g[0].value, p)
                             else:
-                                pre.append_operation("X_ERROR", g[0].value, p)
-                            mid.append_operation("MPP", g, p)
+                                pre.append("X_ERROR", g[0].value, p)
+                            mid.append("MPP", g, p)
                     return pre, mid, post
                 else:
                     singlets = [t.value for g in groups if len(g) == 1 for t in g]
                     pairs = [t.value for g in groups if len(g) == 2 for t in g]
                     if singlets:
-                        pre.append_operation("DEPOLARIZE1", singlets, p)
+                        pre.append("DEPOLARIZE1", singlets, p)
                     if pairs:
-                        pre.append_operation("DEPOLARIZE2", pairs, p)
+                        pre.append("DEPOLARIZE2", pairs, p)
                     args = [p]
 
             else:
                 raise NotImplementedError(repr(op))
-        mid.append_operation(op.name, targets, args)
+        mid.append(op.name, targets, args)
         return pre, mid, post
 
     def noisy_circuit(self,
@@ -164,10 +164,10 @@ class NoiseModel:
             # Apply idle depolarization rules.
             idle_qubits = sorted(qs - used_qubits)
             if used_qubits and idle_qubits and self.idle > 0:
-                current_moment_post.append_operation("DEPOLARIZE1", idle_qubits, self.idle)
+                current_moment_post.append("DEPOLARIZE1", idle_qubits, self.idle)
             idle_qubits = sorted(qs - measured_or_reset_qubits)
             if measured_or_reset_qubits and idle_qubits and self.measure_reset_idle > 0:
-                current_moment_post.append_operation("DEPOLARIZE1", idle_qubits, self.measure_reset_idle)
+                current_moment_post.append("DEPOLARIZE1", idle_qubits, self.measure_reset_idle)
 
             # Move current noisy moment into result.
             result += current_moment_pre
@@ -186,7 +186,7 @@ class NoiseModel:
             elif isinstance(op, stim.CircuitInstruction):
                 if op.name == "TICK":
                     flush()
-                    result.append_operation("TICK", [])
+                    result.append("TICK", [])
                     continue
 
                 if op.name in self.noisy_gates:
@@ -256,19 +256,19 @@ def parity_measurement_with_correlated_measurement_noise(
     # Generate all possible combinations of (non-identity) channels.  Assumes triple of targets
     # with last element corresponding to measure qubit.
     circuit = stim.Circuit()
-    circuit.append_operation('R', [ancilla])
+    circuit.append('R', [ancilla])
     if t1.is_x_target:
-        circuit.append_operation('XCX', [t1.value, ancilla])
+        circuit.append('XCX', [t1.value, ancilla])
     if t1.is_y_target:
-        circuit.append_operation('YCX', [t1.value, ancilla])
+        circuit.append('YCX', [t1.value, ancilla])
     if t1.is_z_target:
-        circuit.append_operation('ZCX', [t1.value, ancilla])
+        circuit.append('ZCX', [t1.value, ancilla])
     if t2.is_x_target:
-        circuit.append_operation('XCX', [t2.value, ancilla])
+        circuit.append('XCX', [t2.value, ancilla])
     if t2.is_y_target:
-        circuit.append_operation('YCX', [t2.value, ancilla])
+        circuit.append('YCX', [t2.value, ancilla])
     if t2.is_z_target:
-        circuit.append_operation('ZCX', [t2.value, ancilla])
+        circuit.append('ZCX', [t2.value, ancilla])
 
     first_targets = ["I", stim.target_x(t1.value), stim.target_y(t1.value), stim.target_z(t1.value)]
     second_targets = ["I", stim.target_x(t2.value), stim.target_y(t2.value), stim.target_z(t2.value)]
@@ -290,9 +290,9 @@ def parity_measurement_with_correlated_measurement_noise(
                     errors.append(error)
 
     for error in errors:
-        circuit.append_operation("CORRELATED_ERROR", error, ind_p)
+        circuit.append("CORRELATED_ERROR", error, ind_p)
 
-    circuit.append_operation('M', [ancilla])
+    circuit.append('M', [ancilla])
 
     return circuit
 

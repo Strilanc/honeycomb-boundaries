@@ -62,7 +62,7 @@ class StabilizerPlanProblem:
         for instruction in self.ideal_circuit:
             if isinstance(instruction, stim.CircuitInstruction) and instruction.name == "MPP":
                 continue
-            kept.append_operation(instruction)
+            kept.append(instruction)
         import stimcirq
         cirq_circuit = stimcirq.stim_circuit_to_cirq_circuit(kept)
         import cirq_web
