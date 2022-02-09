@@ -19,7 +19,6 @@ PYTHONPATH=src python src/hcb/artifacts/collect_logical_error_rates.py \
 
 import argparse
 import math
-import pathlib
 from typing import Iterator, List, Sequence
 
 from hcb.codes.honeycomb.layout import HoneycombLayout
@@ -76,6 +75,10 @@ def main():
                         type=str,
                         default='',
                         help='The file to store results in (or read previous results from).')
+    parser.add_argument('-read_locations',
+                        type=str,
+                        nargs='+',
+                        help='CSV files to include in stats decisions to continue, but not to write to.')
     parser.add_argument('-merge_mode',
                         choices=['saturate', 'replace', 'append'],
                         default='saturate',
@@ -116,17 +119,19 @@ def main():
                         help='Uses sheared layouts.')
 
     args = parser.parse_args()
+    problems = iter_problems(
+        decoders=args.case_decoders,
+        error_rates=args.case_error_rates,
+        distances=args.case_distances,
+        observables=args.case_observables,
+        shearings=[args.case_sheared],
+        gate_sets=args.case_gate_sets,
+    )
 
     collect_simulated_experiment_data(
-        iter_problems(
-            decoders=args.case_decoders,
-            error_rates=args.case_error_rates,
-            distances=args.case_distances,
-            observables=args.case_observables,
-            shearings=[args.case_sheared],
-            gate_sets=args.case_gate_sets,
-        ),
+        problems,
         out_path=args.storage_location or None,
+        alt_in_paths=args.read_locations or (),
         merge_mode=args.merge_mode,
         start_batch_size=args.start_batch_size,
         max_batch_size=args.max_batch_size,

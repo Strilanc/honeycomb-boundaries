@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
-from hcb.tools.analysis.collecting import read_recorded_data, MultiStats
+from hcb.tools.analysis.collecting import MultiStats
 from hcb.tools.analysis.probability_util import least_squares_slope_range
 
 OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
@@ -28,7 +28,7 @@ def main():
         else:
             csvs.append(p)
 
-    all_data = read_recorded_data(*csvs).filter(lambda e: 'PC3' not in e.circuit_style)
+    all_data = MultiStats.from_recorded_data(*csvs).filter(lambda e: 'PC3' not in e.circuit_style)
 
     gate_sets = {
         'SD6': 'SD6',

@@ -4,7 +4,7 @@ import sys
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
-from hcb.tools.analysis.collecting import read_recorded_data, MultiStats
+from hcb.tools.analysis.collecting import MultiStats
 
 OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
@@ -21,7 +21,7 @@ def main():
         else:
             csvs.append(p)
 
-    all_data = read_recorded_data(*csvs)
+    all_data = MultiStats.from_recorded_data(*csvs)
 
     fig = plot_detection_fraction(all_data)
     fig.set_size_inches(15, 5)

@@ -9,7 +9,7 @@ from scipy.stats import linregress
 
 from hcb.artifacts.make_lambda_plots import DesiredLineFit, project_intersection_of_both_observables
 from hcb.codes.honeycomb.layout import HoneycombLayout
-from hcb.tools.analysis.collecting import read_recorded_data, MultiStats, DecodingProblemDesc
+from hcb.tools.analysis.collecting import MultiStats, DecodingProblemDesc
 from hcb.tools.analysis.probability_util import least_squares_output_range
 
 OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
@@ -30,7 +30,7 @@ def main():
         else:
             csvs.append(p)
 
-    all_data = read_recorded_data(*csvs).filter(lambda e: 'PC3' not in e.circuit_style)
+    all_data = MultiStats.from_recorded_data(*csvs).filter(lambda e: 'PC3' not in e.circuit_style)
 
     gate_sets = {
         'SD6': 'SD6',

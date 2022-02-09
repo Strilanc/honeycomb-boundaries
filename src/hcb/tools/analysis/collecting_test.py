@@ -5,7 +5,7 @@ import pytest
 import stim
 
 from hcb.tools.analysis.collecting import (
-    collect_simulated_experiment_data, CaseStats, read_recorded_data, DecodingProblem,
+    collect_simulated_experiment_data, CaseStats, DecodingProblem, MultiStats,
     DecodingProblemDesc,
 )
 from .plotting import plot_data
@@ -53,7 +53,7 @@ def test_collect_and_plot():
             max_errors=1,
         )
 
-        plot_data(read_recorded_data(f), show=False, out_path=d + "/tmp.png", title="Test")
+        plot_data(MultiStats.from_recorded_data(f), show=False, out_path=d + "/tmp.png", title="Test")
 
 
 def test_likely_error_rate_bounds_shrink_towards_half():

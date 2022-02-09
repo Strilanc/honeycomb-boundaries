@@ -4,7 +4,7 @@ import math
 import pathlib
 import threading
 import time
-from typing import Optional, Tuple, Dict, List, Callable, Union, Iterable, TypeVar
+from typing import Optional, Tuple, Dict, List, Callable, Union, Iterable, TypeVar, Sequence
 
 import numpy as np
 import stim
@@ -121,6 +121,7 @@ def collect_simulated_experiment_data(problems: Iterable[DecodingProblem],
                                       max_errors: int,
                                       num_threads: int = 1,
                                       out_path: Optional[Union[str, pathlib.Path]],
+                                      alt_in_paths: Sequence[str] = (),
                                       merge_mode: str):
     """
     Args:
@@ -143,6 +144,8 @@ def collect_simulated_experiment_data(problems: Iterable[DecodingProblem],
             good statistical estimates of low probability errors.
         out_path: Where to write the CSV sample statistic data. Setting this to none doesn't write
             to file; only writes to stdout.
+        alt_in_paths: Files to read initial CSV stats data from. This CSV data is included when
+            deciding when to stop collecting (similar to out_path when using saturate mode).
         max_batch_size: Defaults to unused. If set, then at most this many shots are collected at one
             time.
         merge_mode: Determines how new data and previous data are combined.
@@ -156,13 +159,14 @@ def collect_simulated_experiment_data(problems: Iterable[DecodingProblem],
             a C++ decoder that's safe to invoke separately across multiple threads.
     """
     print(CSV_HEADER, flush=True)
-    previous_data = MultiStats({})
+    all_input_paths_including_saturate_out = list(alt_in_paths)
     if out_path is not None:
         if merge_mode == "replace" or not pathlib.Path(out_path).exists():
             with open(out_path, "w") as f:
                 print(CSV_HEADER, file=f)
         if merge_mode == "saturate":
-            previous_data = read_recorded_data(out_path)
+            all_input_paths_including_saturate_out.append(out_path)
+    previous_data = MultiStats.from_recorded_data(*all_input_paths_including_saturate_out)
 
     if max_batch_size is None:
         max_batch_size = max_shots
@@ -330,6 +334,23 @@ class CaseStats:
                          num_correct=self.num_correct,
                          total_processing_seconds=self.total_processing_seconds)
 
+    def to_csv_line(self, desc: DecodingProblemDesc) -> str:
+        return (
+            f"{desc.data_width},"
+            f"{desc.data_height},"
+            f"{desc.rounds},"
+            f"{desc.noise},"
+            f"{desc.circuit_style},"
+            f"{desc.preserved_observable},"
+            f"{desc.code_distance},"
+            f"{desc.num_qubits},"
+            f"{self.num_shots},"
+            f"{self.num_correct},"
+            f"{self.total_processing_seconds},"
+            f"{desc.decoder},"
+            f"{CSV_HEADER_VERSION}"
+        )
+
     def extrapolate_intersection(self, other: 'CaseStats') -> 'CaseStats':
         p0 = self.logical_error_rate
         p1 = other.logical_error_rate
@@ -384,22 +405,21 @@ class MultiStats:
 
     def to_csv(self) -> str:
         lines = [CSV_HEADER]
-        for k, v in self.data.items():
-            lines.append(
-                f"{k.data_width},"
-                f"{k.data_height},"
-                f"{k.rounds},"
-                f"{k.noise},"
-                f"{k.circuit_style},"
-                f"{k.preserved_observable},"
-                f"{k.code_distance},"
-                f"{k.num_qubits},"
-                f"{v.num_shots},"
-                f"{v.num_correct},"
-                f"{v.total_processing_seconds},"
-                f"{k.decoder},"
-                f"{CSV_HEADER_VERSION}"
-            )
+        ks = sorted(self.data.keys(),
+                    key=lambda e: (
+                        e.circuit_style,
+                        e.preserved_observable,
+                        e.noise,
+                        e.code_distance,
+                        e.rounds,
+                        e.num_qubits,
+                        e.data_width,
+                        e.data_height,
+                        e.decoder,
+                    ))
+        for k in ks:
+            v = self.data[k]
+            lines.append(v.to_csv_line(k))
         return '\n'.join(lines) + '\n'
 
     def grouped_by(self,
@@ -450,24 +470,25 @@ class MultiStats:
         return xs, ys
 
 
-def read_recorded_data(*paths: Union[str, pathlib.Path]) -> MultiStats:
-    result = MultiStats({})
-    for path in paths:
-        with open(path, "r") as f:
-            for row in csv.DictReader(f):
-                key = DecodingProblemDesc(
-                    code_distance=int(row["code_distance"]),
-                    num_qubits=int(row["num_qubits"]),
-                    data_width=int(row["data_width"]),
-                    data_height=int(row["data_height"]),
-                    rounds=int(row["rounds"]),
-                    noise=float(row["noise"]),
-                    circuit_style=row["circuit_style"],
-                    preserved_observable=row["preserved_observable"],
-                    decoder=row["decoder"],
-                )
-                val = result.data.setdefault(key, CaseStats())
-                val.num_shots += int(row["num_shots"])
-                val.num_correct += int(row["num_correct"])
-                val.total_processing_seconds += float(row["total_processing_seconds"])
-    return result
+    @staticmethod
+    def from_recorded_data(*paths: Union[str, pathlib.Path]) -> 'MultiStats':
+        result = MultiStats({})
+        for path in paths:
+            with open(path, "r") as f:
+                for row in csv.DictReader(f):
+                    key = DecodingProblemDesc(
+                        code_distance=int(row["code_distance"]),
+                        num_qubits=int(row["num_qubits"]),
+                        data_width=int(row["data_width"]),
+                        data_height=int(row["data_height"]),
+                        rounds=int(row["rounds"]),
+                        noise=float(row["noise"]),
+                        circuit_style=row["circuit_style"],
+                        preserved_observable=row["preserved_observable"],
+                        decoder=row["decoder"],
+                    )
+                    val = result.data.setdefault(key, CaseStats())
+                    val.num_shots += int(row["num_shots"])
+                    val.num_correct += int(row["num_correct"])
+                    val.total_processing_seconds += float(row["total_processing_seconds"])
+        return result
