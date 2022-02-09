@@ -9,10 +9,11 @@ PYTHONPATH=src python src/hcb/artifacts/collect_logical_error_rates.py \
     -case_gate_sets SD6 SI1000 EM3_v2 \
     -case_decoders internal internal_correlated \
     -case_distances 3 5 7 9 11 \
-    -max_shots 1_000_000 \
+    -max_shots 100_000_000 \
     -max_errors 1000 \
     -merge_mode saturate \
-    -storage_location tmp.csv
+    -storage_location tmp.csv \
+    -threads 8
 
 """
 

@@ -690,7 +690,7 @@ class HoneycombLayout:
     def to_stabilizer_plan(self, layout_index: Optional[int]) -> StabilizerPlan:
         return StabilizerPlan(
             elements=tuple([*self.hex_plan.elements, *self.edge_plan.elements]),
-            observables=() if layout_index is None else self.observable_plan(layout_index),
+            observables=() if layout_index is None else self.observable_plan(layout_index).elements,
         )
 
     def noisy_circuit(self) -> stim.Circuit:
@@ -758,7 +758,10 @@ class HoneycombLayout:
         return StabilizerPlanProblem(
             ideal_circuit=ideal,
             noisy_circuit=noisy,
-            all_layouts=tuple(self.to_stabilizer_plan(k) for k in range(5)),
+            all_layouts=tuple(
+                self.to_stabilizer_plan(k)
+                for k in range(5)
+            ),
             decoding_problem=DecodingProblem(
                 circuit_maker=lambda: noisy,
                 desc=self.to_decoding_desc(decoder=decoder)

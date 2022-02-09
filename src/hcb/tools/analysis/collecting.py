@@ -382,6 +382,26 @@ TKey = TypeVar('TKey')
 class MultiStats:
     data: Dict[DecodingProblemDesc, CaseStats] = dataclasses.field(default_factory=dict)
 
+    def to_csv(self) -> str:
+        lines = [CSV_HEADER]
+        for k, v in self.data.items():
+            lines.append(
+                f"{k.data_width},"
+                f"{k.data_height},"
+                f"{k.rounds},"
+                f"{k.noise},"
+                f"{k.circuit_style},"
+                f"{k.preserved_observable},"
+                f"{k.code_distance},"
+                f"{k.num_qubits},"
+                f"{v.num_shots},"
+                f"{v.num_correct},"
+                f"{v.total_processing_seconds},"
+                f"{k.decoder},"
+                f"{CSV_HEADER_VERSION}"
+            )
+        return '\n'.join(lines) + '\n'
+
     def grouped_by(self,
                    key: Callable[[DecodingProblemDesc], TKey],
                    *,
