@@ -38,10 +38,10 @@ def main():
         'EM3': 'EM3_v2',
     }
     layouts = {
-        'periodic honeycomb code\n(standard decoding)': ('honeycomb', 'internal'),
-        'periodic honeycomb code\n(correlated decoding)': ('honeycomb', 'internal_correlated'),
-        'planar honeycomb code\n(standard decoding)': ('bounded_honeycomb_memory', 'internal'),
-        'planar honeycomb code\n(correlated decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
+        'periodic honeycomb code\n(MWPM decoding)': ('honeycomb', 'internal'),
+        'periodic honeycomb code\n(correlated MWPM decoding)': ('honeycomb', 'internal_correlated'),
+        'planar honeycomb code\n(MWPM decoding)': ('bounded_honeycomb_memory', 'internal'),
+        'planar honeycomb code\n(correlated MWPM decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
     }
     groups = {
         gate_set_caption: [
@@ -58,7 +58,7 @@ def main():
     }
 
     fig2, _ = make_teraquop_plots(all_data, groups)
-    fig2.set_size_inches(13, 7)
+    fig2.set_size_inches(24, 8)
     fig2.savefig(OUT_DIR / "teraquop.png", bbox_inches='tight', dpi=200)
 
     plt.show()
@@ -80,7 +80,7 @@ def make_teraquop_plots(
     axs[0].set_ylabel("Teraquop Qubit Count")
     axs[0].yaxis.label.set_fontsize(14)
 
-    axs[-1].legend(*axs[-2].get_legend_handles_labels())
+    axs[-1].legend(*axs[-2].get_legend_handles_labels(), loc="upper left")
     axs[-1].get_xaxis().set_ticks([])
     axs[-1].get_yaxis().set_ticks([])
     axs[-1].spines['top'].set_visible(False)

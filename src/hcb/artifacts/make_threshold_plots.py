@@ -34,8 +34,8 @@ def main():
         'EM3': 'EM3_v2',
     }
     layouts = {
-        'periodic honeycomb code\n(correlated decoding)': ('honeycomb', 'internal_correlated'),
-        'planar honeycomb code\n(correlated decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
+        'periodic honeycomb code\n(correlated MWPM decoding)': ('honeycomb', 'internal_correlated'),
+        'planar honeycomb code\n(correlated MWPM decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
     }
     groups = {
         gate_set_caption: [
@@ -52,7 +52,7 @@ def main():
     }
 
     fig, _ = make_threshold_plots(all_data, groups)
-    fig.set_size_inches(13, 7)
+    fig.set_size_inches(24, 8)
     fig.savefig(OUT_DIR / "threshold.png", bbox_inches='tight', dpi=200)
 
     plt.show()
@@ -90,7 +90,7 @@ def make_threshold_plots(
                 if b[k] not in handles:
                     labels.append(a[k])
                     handles.append(b[k])
-        axs[y, -1].legend(labels, handles)
+        axs[y, -1].legend(labels, handles, loc="upper left")
         axs[y, -1].get_xaxis().set_ticks([])
         axs[y, -1].get_yaxis().set_ticks([])
         axs[y, -1].spines['top'].set_visible(False)

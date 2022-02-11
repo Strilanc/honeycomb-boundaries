@@ -36,8 +36,8 @@ def main():
         'EM3': 'EM3_v2',
     }
     layouts = {
-        'periodic honeycomb code\n(correlated decoding)': ('honeycomb', 'internal_correlated'),
-        'planar honeycomb code\n(correlated decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
+        'periodic honeycomb code\n(correlated MWPM decoding)': ('honeycomb', 'internal_correlated'),
+        'planar honeycomb code\n(correlated MWPM decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
     }
     groups = {
         gate_set_caption: [
@@ -54,7 +54,7 @@ def main():
     }
 
     fig, _ = make_line_fit_plots(all_data, groups)
-    fig.set_size_inches(13, 7)
+    fig.set_size_inches(24, 8)
     fig.savefig(OUT_DIR / "line_fit.png", bbox_inches='tight', dpi=200)
 
     plt.show()
