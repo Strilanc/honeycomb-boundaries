@@ -49,6 +49,7 @@ def main():
                 color=COLORS[k],
                 filter_circuit_style=f"{gate_set_prefix}_{gate_set_suffix}",
                 filter_decoder=decoder,
+                observable="combo",
             )
             for k, (layout_caption, (gate_set_prefix, decoder)) in enumerate(layouts.items())
         ]
@@ -56,7 +57,7 @@ def main():
     }
 
     fig2, _ = make_lambda_plots(all_data, groups)
-    fig2.set_size_inches(24, 8)
+    fig2.set_size_inches(18, 6)
     fig2.savefig(OUT_DIR / "lambda.png", bbox_inches='tight', dpi=200)
 
     plt.show()
@@ -69,6 +70,7 @@ class DesiredLineFit:
     color: str
     filter_circuit_style: str
     filter_decoder: str
+    observable: str
 
 
 def fill_in_single_lambda_plot(

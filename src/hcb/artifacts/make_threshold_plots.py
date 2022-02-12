@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from hcb.artifacts.make_lambda_plots import DesiredLineFit, project_intersection_of_both_observables
 from hcb.tools.analysis.collecting import MultiStats
+from hcb.tools.analysis.plotting import total_error_to_per_piece_error
 
 OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
@@ -34,8 +35,8 @@ def main():
         'EM3': 'EM3_v2',
     }
     layouts = {
-        'periodic honeycomb code\n(correlated MWPM decoding)': ('honeycomb', 'internal_correlated'),
-        'planar honeycomb code\n(correlated MWPM decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
+        ('planar honeycomb code\n(correlated MWPM decoding)', 'bounded_honeycomb_memory', 'internal_correlated', 'combo'),
+        ('periodic honeycomb code\n(correlated MWPM decoding)', 'honeycomb', 'internal_correlated', 'combo'),
     }
     groups = {
         gate_set_caption: [
@@ -43,26 +44,29 @@ def main():
                 legend_caption=layout_caption,
                 marker=MARKERS[k],
                 color=COLORS[k],
+                observable=obs,
                 filter_circuit_style=f"{gate_set_prefix}_{gate_set_suffix}",
                 filter_decoder=decoder,
             )
-            for k, (layout_caption, (gate_set_prefix, decoder)) in enumerate(layouts.items())
+            for k, (layout_caption, gate_set_prefix, decoder, obs) in enumerate(layouts)
         ]
         for gate_set_caption, gate_set_suffix in gate_sets.items()
     }
 
-    fig, _ = make_threshold_plots(all_data, groups)
-    fig.set_size_inches(24, 8)
+    fig, _ = make_threshold_plots(data=all_data, groups=groups)
+    fig.set_size_inches(18, 6)
     fig.savefig(OUT_DIR / "threshold.png", bbox_inches='tight', dpi=200)
 
     plt.show()
 
 
 def make_threshold_plots(
+        *,
         data: MultiStats,
         groups: Dict[str, List[DesiredLineFit]]):
-    data = project_intersection_of_both_observables(data)
-    grouped = data.grouped_by(lambda e: (e.circuit_style, e.decoder))
+    if any(e.observable == 'combo' for v in groups.values() for e in v):
+        data = project_intersection_of_both_observables(data)
+    grouped = data.grouped_by(lambda e: (e.circuit_style, e.decoder, e.preserved_observable))
     sizes = sorted({(desc.data_width, desc.data_height, desc.rounds)
                     for desc in data.data.keys()}, reverse=True)
     size_styles = {
@@ -70,18 +74,19 @@ def make_threshold_plots(
         for k, noise in enumerate(sizes)
     }
 
-    fig, axs = plt.subplots(2, len(groups) + 1)
+    h = max(len(e) for e in groups.values())
+    fig, axs = plt.subplots(h, len(groups) + 1)
     for k, (name, gs) in enumerate(groups.items()):
         for y, g in enumerate(gs):
-            fill_in_threshold_plot(grouped, g, axs[y, k], size_styles)
+            fill_in_threshold_plot(grouped, group=g, ax=axs[y, k], size_styles=size_styles)
             if k == 0:
-                axs[y, 0].set_ylabel(f"{g.legend_caption}\nLogical Error Rate")
+                axs[y, 0].set_ylabel(f"{g.legend_caption}\n{g.observable} shot error rate")
                 axs[y, 0].yaxis.label.set_fontsize(14)
         axs[0, k].set_title(name)
         axs[-1, k].set_xlabel("Physical Error Rate")
         axs[-1, k].xaxis.label.set_fontsize(14)
 
-    for y in [0, 1]:
+    for y in range(h):
         labels = []
         handles = []
         for x in range(3):
@@ -101,12 +106,14 @@ def make_threshold_plots(
 
 
 def fill_in_threshold_plot(
-    grouped_projected_data: Dict[Tuple[str, str], MultiStats],
+    grouped_projected_data: Dict[Tuple[str, str, str], MultiStats],
+    *,
     group: DesiredLineFit,
     ax: plt.Axes,
     size_styles: Dict[Tuple[float, float, float], Tuple[Any, Any]],
 ):
-    stats = grouped_projected_data.get((group.filter_circuit_style, group.filter_decoder), MultiStats({}))
+    pieces = 3
+    stats = grouped_projected_data.get((group.filter_circuit_style, group.filter_decoder, group.observable), MultiStats({}))
     for size_key, noise_stats in stats.grouped_by(lambda e: (e.data_width, e.data_height, e.rounds)).items():
         xs = []
         ys = []
@@ -116,10 +123,10 @@ def fill_in_threshold_plot(
             assert len(group_stats.data) == 1
             case_stats = group_stats.merged_total()
             xs.append(noise)
-            ys.append(case_stats.logical_error_rate)
+            ys.append(total_error_to_per_piece_error(case_stats.logical_error_rate, pieces=pieces))
             low, high = case_stats.likely_error_rate_bounds(desired_ratio_vs_max_likelihood=1e-3)
-            ys_low.append(low)
-            ys_high.append(high)
+            ys_low.append(total_error_to_per_piece_error(low, pieces=pieces))
+            ys_high.append(total_error_to_per_piece_error(high, pieces=pieces))
         color, marker = size_styles[size_key]
         ax.plot(xs, ys, marker=marker, label=f'{size_key[0]}x{size_key[1]} ({size_key[2]} rounds)', color=color, zorder=10)
         ax.fill_between(xs, ys_low, ys_high, alpha=0.3, color=color)

@@ -9,6 +9,7 @@ from scipy.stats import linregress
 
 from hcb.artifacts.make_lambda_plots import DesiredLineFit, project_intersection_of_both_observables
 from hcb.tools.analysis.collecting import MultiStats
+from hcb.tools.analysis.plotting import total_error_to_per_piece_error
 
 OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
 
@@ -47,6 +48,7 @@ def main():
                 color=COLORS[k],
                 filter_circuit_style=f"{gate_set_prefix}_{gate_set_suffix}",
                 filter_decoder=decoder,
+                observable="combo",
             )
             for k, (layout_caption, (gate_set_prefix, decoder)) in enumerate(layouts.items())
         ]
@@ -54,7 +56,7 @@ def main():
     }
 
     fig, _ = make_line_fit_plots(all_data, groups)
-    fig.set_size_inches(24, 8)
+    fig.set_size_inches(18, 6)
     fig.savefig(OUT_DIR / "line_fit.png", bbox_inches='tight', dpi=200)
 
     plt.show()
@@ -106,6 +108,7 @@ def fill_in_line_fit_plot(
     noise_style: Dict[float, Tuple[Any, Any]],
 ):
     stats = grouped_projected_data.get((group.filter_circuit_style, group.filter_decoder), MultiStats({}))
+    pieces = 3
     for noise, noise_stats in stats.grouped_by(lambda e: e.noise, reverse=True).items():
         xs = []
         ys = []
@@ -113,7 +116,7 @@ def fill_in_line_fit_plot(
             assert len(group_stats.data) == 1
             case_stats = group_stats.merged_total()
             xs.append(x)
-            ys.append(case_stats.logical_error_rate)
+            ys.append(total_error_to_per_piece_error(case_stats.logical_error_rate, pieces=pieces))
         x2s = []
         y2s = []
         for x, y in zip(xs, ys):

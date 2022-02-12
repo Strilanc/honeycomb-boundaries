@@ -10,6 +10,7 @@ from scipy.stats import linregress
 from hcb.artifacts.make_lambda_plots import DesiredLineFit, project_intersection_of_both_observables
 from hcb.codes.honeycomb.layout import HoneycombLayout
 from hcb.tools.analysis.collecting import MultiStats, DecodingProblemDesc
+from hcb.tools.analysis.plotting import total_error_to_per_piece_error
 from hcb.tools.analysis.probability_util import least_squares_output_range
 
 OUT_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "out"
@@ -51,6 +52,7 @@ def main():
                 color=COLORS[k],
                 filter_circuit_style=f"{gate_set_prefix}_{gate_set_suffix}",
                 filter_decoder=decoder,
+                observable="combo",
             )
             for k, (layout_caption, (gate_set_prefix, decoder)) in enumerate(layouts.items())
         ]
@@ -58,7 +60,7 @@ def main():
     }
 
     fig2, _ = make_teraquop_plots(all_data, groups)
-    fig2.set_size_inches(24, 8)
+    fig2.set_size_inches(18, 6)
     fig2.savefig(OUT_DIR / "teraquop.png", bbox_inches='tight', dpi=200)
 
     plt.show()
@@ -114,6 +116,7 @@ def fill_in_single_teraquop_plot(
     groups: List[DesiredLineFit],
     ax: plt.Axes,
 ):
+    pieces = 3
     for group in groups:
         stats = grouped_projected_data.get((group.filter_circuit_style, group.filter_decoder), MultiStats({}))
         xs = []
@@ -123,7 +126,7 @@ def fill_in_single_teraquop_plot(
         for noise, noise_stats in stats.grouped_by(lambda e: e.noise).items():
             linefit_xs, linefit_ys = noise_stats.after_discarding_degenerates().to_xs_ys(
                 x_func=lambda e: e.code_distance,
-                y_func=lambda e: math.log(e.logical_error_rate),
+                y_func=lambda e: math.log(total_error_to_per_piece_error(e.logical_error_rate, pieces=pieces)),
             )
             if len(linefit_xs) < 2:
                 continue
