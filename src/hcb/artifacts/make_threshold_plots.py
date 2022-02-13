@@ -80,7 +80,7 @@ def make_threshold_plots(
         for y, g in enumerate(gs):
             fill_in_threshold_plot(grouped, group=g, ax=axs[y, k], size_styles=size_styles)
             if k == 0:
-                axs[y, 0].set_ylabel(f"{g.legend_caption}\n{g.observable} shot error rate")
+                axs[y, 0].set_ylabel(f"{g.legend_caption}\n{g.observable} logical error rate")
                 axs[y, 0].yaxis.label.set_fontsize(14)
         axs[0, k].set_title(name)
         axs[-1, k].set_xlabel("Physical Error Rate")

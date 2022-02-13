@@ -26,7 +26,7 @@ class StabilizerPlanProblem:
         return self.decoding_problem.sample_correct_count(shots)
 
     def graphlike_code_distance(self) -> int:
-        return len(self.noisy_circuit.detector_error_model(decompose_errors=True).shortest_graphlike_error())
+        return len(self.noisy_circuit.shortest_graphlike_error(ignore_ungraphlike_errors=True))
 
     def write_debug_files(self, out_dir: Union[str, pathlib.Path]) -> None:
         out_dir = pathlib.Path(out_dir)
