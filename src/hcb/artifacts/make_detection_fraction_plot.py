@@ -32,11 +32,11 @@ def main():
 
 def plot_detection_fraction(all_data: MultiStats) -> plt.Figure:
     included_styles = {
-        'honeycomb_SI1000': ("SI1000", "Periodic Honeycomb Code"),
         'honeycomb_SD6': ("SD6", "Periodic Honeycomb Code"),
+        'honeycomb_SI1000': ("SI1000", "Periodic Honeycomb Code"),
         "honeycomb_EM3_v2": ("EM3", "Periodic Honeycomb Code"),
-        'bounded_honeycomb_memory_SI1000': ("SI1000", "Planar Honeycomb Code"),
         'bounded_honeycomb_memory_SD6': ("SD6", "Planar Honeycomb Code"),
+        'bounded_honeycomb_memory_SI1000': ("SI1000", "Planar Honeycomb Code"),
         "bounded_honeycomb_memory_EM3_v2": ("EM3", "Planar Honeycomb Code"),
     }
     known_styles = {

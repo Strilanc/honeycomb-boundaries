@@ -78,7 +78,7 @@ def make_line_fit_plots(
         for y, g in enumerate(gs):
             fill_in_line_fit_plot(grouped, g, axs[y, k], noise_style)
             if k == 0:
-                axs[y, 0].set_ylabel(f"{g.legend_caption}\nLogical Error Rate")
+                axs[y, 0].set_ylabel(f"{g.legend_caption}\ncombo logical error rate")
                 axs[y, 0].yaxis.label.set_fontsize(14)
         axs[0, k].set_title(name)
         axs[-1, k].set_xlabel("Patch Width")
