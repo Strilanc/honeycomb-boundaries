@@ -28,6 +28,14 @@ def main():
             csvs.append(p)
 
     all_data = MultiStats.from_recorded_data(*csvs).filter(lambda e: 'PC3' not in e.circuit_style)
+    decoders = {e.decoder for e in all_data.data.keys()}
+    if 'internal_correlated' in decoders:
+        best_decoder = 'internal_correlated'
+        best_decoder_name = '(correlated MWPM)'
+    else:
+        best_decoder = sorted(decoders)[0]
+        best_decoder_name = best_decoder
+
 
     gate_sets = {
         'SD6': 'SD6',
@@ -35,8 +43,8 @@ def main():
         'EM3': 'EM3_v2',
     }
     layouts = {
-        ('planar honeycomb code\n(correlated MWPM)', 'bounded_honeycomb_memory', 'internal_correlated', 'combo'),
-        ('periodic honeycomb code\n(correlated MWPM)', 'honeycomb', 'internal_correlated', 'combo'),
+        (f'planar honeycomb code\n({best_decoder_name})', 'bounded_honeycomb_memory', best_decoder, 'combo'),
+        (f'periodic honeycomb code\n({best_decoder_name})', 'honeycomb', best_decoder, 'combo'),
     }
     groups = {
         gate_set_caption: [
