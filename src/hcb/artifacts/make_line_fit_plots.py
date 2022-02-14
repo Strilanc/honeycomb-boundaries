@@ -37,8 +37,8 @@ def main():
         'EM3': 'EM3_v2',
     }
     layouts = {
-        'periodic honeycomb code\n(correlated MWPM decoding)': ('honeycomb', 'internal_correlated'),
-        'planar honeycomb code\n(correlated MWPM decoding)': ('bounded_honeycomb_memory', 'internal_correlated'),
+        'periodic honeycomb code\n(correlated MWPM)': ('honeycomb', 'internal_correlated'),
+        'planar honeycomb code\n(correlated MWPM)': ('bounded_honeycomb_memory', 'internal_correlated'),
     }
     groups = {
         gate_set_caption: [
