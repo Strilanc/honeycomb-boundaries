@@ -140,7 +140,7 @@ def fill_in_threshold_plot(
         ax.fill_between(xs, ys_low, ys_high, alpha=0.3, color=color)
 
     ax.set_xlim(1e-4, 1e-1)
-    ax.set_ylim(1e-6, 1e-0)
+    ax.set_ylim(1e-8, 1e-0)
     ax.loglog()
     ax.grid(which='minor', color='#AAAAAA')
     ax.grid(which='major', color='black')
