@@ -120,11 +120,10 @@ class NoiseModel:
                                 mix_probability=p)
                         else:
                             assert len(g) == 1
-                            if g[0].is_x_target:
-                                pre.append("Z_ERROR", g[0].value, p)
-                            else:
-                                pre.append("X_ERROR", g[0].value, p)
-                            mid.append("MPP", g, p)
+                            mid += parity_measurement_with_correlated_measurement_noise(
+                                t1=g[0],
+                                ancilla=ancilla,
+                                mix_probability=p)
                     return pre, mid, post
                 else:
                     singlets = [t.value for g in groups if len(g) == 1 for t in g]
@@ -238,7 +237,7 @@ def mix_probability_to_independent_component_probability(mix_probability: float,
 def parity_measurement_with_correlated_measurement_noise(
         *,
         t1: stim.GateTarget,
-        t2: stim.GateTarget,
+        t2: stim.GateTarget = None,
         ancilla: int,
         mix_probability: float) -> stim.Circuit:
     """Performs a noisy parity measurement.
@@ -247,11 +246,21 @@ def parity_measurement_with_correlated_measurement_noise(
 
         {I1,X1,Y1,Z1}*{I2,X2,Y2,Z2}*{no flip, flip}
 
+    in the case of a pairwise measurement and
+
+        {I1,X1,Y1,Z1}*{no flip, flip}
+
+    in the case of a single qubit measurement.
+
     Note that, unlike in other places in the code, the all-identity term is one of the possible
     samples when the error occurs.
     """
 
-    ind_p = mix_probability_to_independent_component_probability(mix_probability, 5)
+    num_coins = 3
+    if t2 is not None:
+        num_coins = 5
+
+    ind_p = mix_probability_to_independent_component_probability(mix_probability, num_coins)
 
     # Generate all possible combinations of (non-identity) channels.  Assumes triple of targets
     # with last element corresponding to measure qubit.
@@ -263,15 +272,18 @@ def parity_measurement_with_correlated_measurement_noise(
         circuit.append('YCX', [t1.value, ancilla])
     if t1.is_z_target:
         circuit.append('ZCX', [t1.value, ancilla])
-    if t2.is_x_target:
-        circuit.append('XCX', [t2.value, ancilla])
-    if t2.is_y_target:
-        circuit.append('YCX', [t2.value, ancilla])
-    if t2.is_z_target:
-        circuit.append('ZCX', [t2.value, ancilla])
+    if t2 is not None:
+        if t2.is_x_target:
+            circuit.append('XCX', [t2.value, ancilla])
+        if t2.is_y_target:
+            circuit.append('YCX', [t2.value, ancilla])
+        if t2.is_z_target:
+            circuit.append('ZCX', [t2.value, ancilla])
 
     first_targets = ["I", stim.target_x(t1.value), stim.target_y(t1.value), stim.target_z(t1.value)]
-    second_targets = ["I", stim.target_x(t2.value), stim.target_y(t2.value), stim.target_z(t2.value)]
+    second_targets = ["I"]
+    if t2 is not None:
+        second_targets = ["I", stim.target_x(t2.value), stim.target_y(t2.value), stim.target_z(t2.value)]
     measure_targets = ["I", stim.target_x(ancilla)]
 
     errors = []
