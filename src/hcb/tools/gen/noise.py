@@ -1,5 +1,6 @@
 import dataclasses
 from typing import Optional, Dict, Set, Tuple, Sequence, List
+from enum import Enum
 
 import stim
 
@@ -9,6 +10,12 @@ RESET_OPS = {"R", "RX", "RY"}
 MEASURE_OPS = {"M", "MX", "MY"}
 ANNOTATION_OPS = {"OBSERVABLE_INCLUDE", "DETECTOR", "SHIFT_COORDS", "QUBIT_COORDS", "TICK"}
 
+class MppErrorType(Enum):
+    NONE = 0
+    DEPOLARIZING = 1
+    DEPHASING = 2
+    CORRELATED = 3
+
 
 @dataclasses.dataclass(frozen=True)
 class NoiseModel:
@@ -17,7 +24,8 @@ class NoiseModel:
     noisy_gates: Dict[str, float]
     any_clifford_1: Optional[float] = None
     any_clifford_2: Optional[float] = None
-    use_correlated_parity_measurement_errors: bool = False
+    mpp_error: MppErrorType = MppErrorType.DEPOLARIZING
+    mpp_indep_flip_error: Optional[float] = None
 
     @staticmethod
     def SD6(p: float) -> 'NoiseModel':
@@ -47,14 +55,15 @@ class NoiseModel:
 
     @staticmethod
     def EM3_v1(p: float) -> 'NoiseModel':
-        """EM3 but with measurement flip errors independent of measurement target depolarization error."""
+        """EM3 with measurement flip errors independent of measurement target depolarization error."""
         return NoiseModel(
+            any_clifford_1=0,
+            any_clifford_2=0,
             idle=p,
             measure_reset_idle=0,
-            any_clifford_1=p,
             noisy_gates={
-                "R": p,
-                "M": p,
+                "R": p/2,
+                "M": p/2,
                 "MPP": p,
             },
         )
@@ -67,7 +76,25 @@ class NoiseModel:
             any_clifford_2=0,
             idle=p,
             measure_reset_idle=0,
-            use_correlated_parity_measurement_errors=True,
+            mpp_error=MppErrorType.CORRELATED,
+            noisy_gates={
+                "R": p/2,
+                "M": p/2,
+                "MPP": p,
+            },
+        )
+
+    @staticmethod
+    def EM3_v3(p: float) -> 'NoiseModel':
+        """EM3, but with correlated dephasing and independent bitflips
+        on MPP operations rather than depolarizing error"""
+        return NoiseModel(
+            any_clifford_1=0,
+            any_clifford_2=0,
+            idle=p,
+            measure_reset_idle=0,
+            mpp_error=MppErrorType.DEPHASING,
+            mpp_indep_flip_error=p,
             noisy_gates={
                 "R": p/2,
                 "M": p/2,
@@ -109,7 +136,10 @@ class NoiseModel:
                 assert all(len(g) in [1, 2] for g in groups)
                 assert args == [] or args == [0]
 
-                if self.use_correlated_parity_measurement_errors:
+                if self.mpp_error == MppErrorType.CORRELATED:
+                    if self.mpp_indep_flip_error is not None:
+                        raise ValueError("MPP independent flip errors aren't supported "
+                                         "with correlated MPP errors")
                     for g in groups:
                         if len(g) == 2:
                             a, b = g
@@ -127,12 +157,53 @@ class NoiseModel:
                             mid.append("MPP", g, p)
                     return pre, mid, post
                 else:
+                    first_target = groups[0][0]
+
                     singlets = [t.value for g in groups if len(g) == 1 for t in g]
                     pairs = [t.value for g in groups if len(g) == 2 for t in g]
                     if singlets:
-                        pre.append("DEPOLARIZE1", singlets, p)
+                        if self.mpp_error == MppErrorType.NONE:
+                            pass
+                        elif self.mpp_error == MppErrorType.DEPOLARIZING:
+                            pre.append("DEPOLARIZE1", singlets, p)
+                        elif self.mpp_error == MppErrorType.DEPHASING:
+                            pz = p if first_target.is_z_target else 0
+                            py = p if first_target.is_y_target else 0
+                            px = p if first_target.is_x_target else 0
+                            pauli_1_errors = px, py, pz
+                            pre.append("PAULI_CHANNEL_1", singlets, pauli_1_errors)
+                        else:
+                            raise NotImplementedError(f"Mpp Error Type:"
+                                                      f" {self.mpp_error}")
                     if pairs:
-                        pre.append("DEPOLARIZE2", pairs, p)
+                        if self.mpp_error == MppErrorType.NONE:
+                            # non-zero to fix the decomposition
+                            pre.append("DEPOLARIZE2", pairs, 1E-15)
+                        elif self.mpp_error == MppErrorType.DEPOLARIZING:
+                            pre.append("DEPOLARIZE2", pairs, p)
+                        elif self.mpp_error == MppErrorType.DEPHASING:
+                            pzz = p if first_target.is_z_target else 0
+                            pyy = p if first_target.is_y_target else 0
+                            pxx = p if first_target.is_x_target else 0
+                            # make single qubit cases non-zero for decomposition
+                            pxi = pix = pyi = piy = piz = pzi = 1E-15
+                            # make other cases = 0
+                            pxy = pyx = pzx = pxz = pzy = pyz = 0
+                            pauli_2_errors = [pix, piy, piz,
+                                              pxi, pxx, pxy, pxz,
+                                              pyi, pyx, pyy, pyz,
+                                              pzi, pzx, pzy, pzz]
+                            pre.append("PAULI_CHANNEL_2", pairs, pauli_2_errors)
+                        else:
+                            raise NotImplementedError(f"Mpp Error Type:"
+                                                      f" {self.mpp_error}")
+                    if self.mpp_indep_flip_error:
+                        # flip error is orthogonal to the measurement axis
+                        px = self.mpp_indep_flip_error if first_target.is_z_target else 0
+                        pz = self.mpp_indep_flip_error if first_target.is_y_target else 0
+                        py = self.mpp_indep_flip_error if first_target.is_x_target else 0
+                        pauli_1_errors = px, py, pz
+                        pre.append("PAULI_CHANNEL_1", singlets + pairs, pauli_1_errors)
                     args = [p]
 
             else:

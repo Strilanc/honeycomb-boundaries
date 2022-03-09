@@ -44,6 +44,7 @@ SI1000_DATA_ROTATION_SEQUENCE: Tuple[Tuple[str, str, str, str], Tuple[str, str, 
     ),
 )
 
+EM3_LIKE_GATE_SETS = ['EM3_v1', 'EM3_v2', 'EM3_v3']
 
 @dataclasses.dataclass
 class ComparisonRule:
@@ -257,7 +258,7 @@ class HoneycombLayout:
     @staticmethod
     def unsheared_size_for_code_distance(distance: int,
                                          gate_set: str) -> Tuple[int, int]:
-        if gate_set in ['EM3_v1', 'EM3_v2']:
+        if gate_set in EM3_LIKE_GATE_SETS:
             return distance * 2, distance * 3
         if gate_set in ['SD6', 'SI1000']:
             w = distance + 1
@@ -269,14 +270,14 @@ class HoneycombLayout:
         raise NotImplementedError()
 
     def horizontal_graphlike_code_distance(self) -> int:
-        if self.noisy_gate_set in ['EM3_v1', 'EM3_v2']:
+        if self.noisy_gate_set in EM3_LIKE_GATE_SETS:
             return self.data_width // 2
         if self.noisy_gate_set in ['SD6', 'SI1000']:
             return self.data_width - 1
         raise NotImplementedError(self.noisy_gate_set)
 
     def vertical_graphlike_code_distance(self) -> int:
-        if self.noisy_gate_set in ['EM3_v1', 'EM3_v2']:
+        if self.noisy_gate_set in EM3_LIKE_GATE_SETS:
             return self.data_height // 3
         if self.noisy_gate_set in ['SD6', 'SI1000']:
             return self.data_height // 2
@@ -706,7 +707,7 @@ class HoneycombLayout:
         return result
 
     def num_used_qubits(self) -> int:
-        if self.noisy_gate_set in ['EM3_v1', 'EM3_v2']:
+        if self.noisy_gate_set in EM3_LIKE_GATE_SETS:
             return self.num_data_qubits()
         if self.noisy_gate_set in ["SD6", 'SI1000']:
             nd = self.num_data_qubits()

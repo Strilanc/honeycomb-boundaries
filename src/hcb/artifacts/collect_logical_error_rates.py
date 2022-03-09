@@ -99,7 +99,7 @@ def main():
                         required=True,
                         help='Which observable to intialize and protect and measure.')
     parser.add_argument('-case_gate_sets',
-                        choices=['SD6', 'SI1000', 'EM3_v2'],
+                        choices=['SD6', 'SI1000', 'EM3_v1', 'EM3_v2', 'EM3_v3'],
                         nargs='+',
                         required=True,
                         help='Noisy gate sets to sample.')
