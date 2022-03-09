@@ -3,8 +3,6 @@ import stim
 
 from hcb.codes.honeycomb.layout import HoneycombLayout
 
-import difflib
-
 
 @pytest.mark.parametrize("data_width,data_height,rounds,gate_set,tested_observable,decomposed_graphlike_code_distance,ignored_graphlike_code_distance", [
     (8, 12, 10, 'SI1000', 'H', 5, 6),
