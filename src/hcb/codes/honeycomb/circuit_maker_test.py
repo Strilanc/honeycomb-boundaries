@@ -3,6 +3,8 @@ import stim
 
 from hcb.codes.honeycomb.layout import HoneycombLayout
 
+import difflib
+
 
 @pytest.mark.parametrize("data_width,data_height,rounds,gate_set,tested_observable,decomposed_graphlike_code_distance,ignored_graphlike_code_distance", [
     (8, 12, 10, 'SI1000', 'H', 5, 6),
@@ -90,7 +92,7 @@ def test_exact_circuit_EM3_v1_H():
                              noisy_gate_set='EM3_v1',
                              tested_observable='H',
                              sheared=True)
-    assert layout.ideal_and_noisy_circuit[1] == stim.Circuit("""
+    expected_circuit = stim.Circuit("""
         QUBIT_COORDS(0, 0) 0
         QUBIT_COORDS(1, 0) 1
         QUBIT_COORDS(1, 1) 2
@@ -253,6 +255,10 @@ def test_exact_circuit_EM3_v1_H():
         OBSERVABLE_INCLUDE(1) rec[-4] rec[-3] rec[-2] rec[-1]
         TICK
     """)
+
+    expected_circuit.__eq__()
+
+    assert layout.ideal_and_noisy_circuit[1] == expected_circuit
 
 
 def test_exact_circuit_SD6_V():

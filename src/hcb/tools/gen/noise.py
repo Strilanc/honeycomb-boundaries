@@ -72,13 +72,12 @@ class NoiseModel:
     def EM3_v1(p: float) -> 'NoiseModel':
         """EM3 with measurement flip errors independent of measurement target depolarization error."""
         return NoiseModel(
-            any_clifford_1=0,
-            any_clifford_2=0,
             idle=p,
             measure_reset_idle=0,
+            any_clifford_1=p,
             noisy_gates={
-                "R": p/2,
-                "M": p/2,
+                "R": p,
+                "M": p,
                 "MPP": p,
             },
         )
