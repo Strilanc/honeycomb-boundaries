@@ -10,6 +10,7 @@ RESET_OPS = {"R", "RX", "RY"}
 MEASURE_OPS = {"M", "MX", "MY"}
 ANNOTATION_OPS = {"OBSERVABLE_INCLUDE", "DETECTOR", "SHIFT_COORDS", "QUBIT_COORDS", "TICK"}
 
+
 class MppErrorType(Enum):
     NONE = 0
     DEPOLARIZING = 1
@@ -26,6 +27,20 @@ class NoiseModel:
     any_clifford_2: Optional[float] = None
     mpp_error: MppErrorType = MppErrorType.DEPOLARIZING
     mpp_indep_flip_error: Optional[float] = None
+
+    @staticmethod
+    def dispatcher(noise_model_name: str, p: float):
+        if noise_model_name == 'EM3_v2':
+            return NoiseModel.EM3_v2(p)
+        if noise_model_name == 'EM3_v1':
+            return NoiseModel.EM3_v1(p)
+        if noise_model_name == 'SIEM3000':
+            return NoiseModel.SIEM3000(p)
+        if noise_model_name == 'SD6':
+            return NoiseModel.SD6(p)
+        if noise_model_name == 'SI1000':
+            return NoiseModel.SI1000(p)
+        raise NotImplementedError(f'{noise_model_name}')
 
     @staticmethod
     def SD6(p: float) -> 'NoiseModel':

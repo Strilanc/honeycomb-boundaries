@@ -44,6 +44,7 @@ SI1000_DATA_ROTATION_SEQUENCE: Tuple[Tuple[str, str, str, str], Tuple[str, str, 
     ),
 )
 
+STANDARD_GATE_SETS = ['SD6', 'SI1000']
 EM3_LIKE_GATE_SETS = ['EM3_v1', 'EM3_v2', 'SIEM3000']
 
 @dataclasses.dataclass
@@ -260,7 +261,7 @@ class HoneycombLayout:
                                          gate_set: str) -> Tuple[int, int]:
         if gate_set in EM3_LIKE_GATE_SETS:
             return distance * 2, distance * 3
-        if gate_set in ['SD6', 'SI1000']:
+        if gate_set in STANDARD_GATE_SETS:
             w = distance + 1
             h = distance * 2
             while h % 3:
@@ -272,14 +273,14 @@ class HoneycombLayout:
     def horizontal_graphlike_code_distance(self) -> int:
         if self.noisy_gate_set in EM3_LIKE_GATE_SETS:
             return self.data_width // 2
-        if self.noisy_gate_set in ['SD6', 'SI1000']:
+        if self.noisy_gate_set in STANDARD_GATE_SETS:
             return self.data_width - 1
         raise NotImplementedError(self.noisy_gate_set)
 
     def vertical_graphlike_code_distance(self) -> int:
         if self.noisy_gate_set in EM3_LIKE_GATE_SETS:
             return self.data_height // 3
-        if self.noisy_gate_set in ['SD6', 'SI1000']:
+        if self.noisy_gate_set in STANDARD_GATE_SETS:
             return self.data_height // 2
         raise NotImplementedError()
 
