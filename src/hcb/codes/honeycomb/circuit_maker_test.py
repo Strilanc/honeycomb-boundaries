@@ -92,7 +92,7 @@ def test_exact_circuit_EM3_v1_H():
                              noisy_gate_set='EM3_v1',
                              tested_observable='H',
                              sheared=True)
-    expected_circuit = stim.Circuit("""
+    assert layout.ideal_and_noisy_circuit[1] == stim.Circuit("""
         QUBIT_COORDS(0, 0) 0
         QUBIT_COORDS(1, 0) 1
         QUBIT_COORDS(1, 1) 2
@@ -255,10 +255,6 @@ def test_exact_circuit_EM3_v1_H():
         OBSERVABLE_INCLUDE(1) rec[-4] rec[-3] rec[-2] rec[-1]
         TICK
     """)
-
-    expected_circuit.__eq__()
-
-    assert layout.ideal_and_noisy_circuit[1] == expected_circuit
 
 
 def test_exact_circuit_SD6_V():
