@@ -85,9 +85,11 @@ class NoiseModel:
         )
 
     @staticmethod
-    def EM3_v3(p: float) -> 'NoiseModel':
-        """EM3, but with correlated dephasing and independent bitflips
-        on MPP operations rather than depolarizing error"""
+    def SIEM3000(p: float) -> 'NoiseModel':
+        """Superconducting inspired entangling measurements
+
+       Like EM3, but with correlated dephasing and independent bitflips
+        on MPP operations, rather than depolarizing"""
         return NoiseModel(
             any_clifford_1=0,
             any_clifford_2=0,

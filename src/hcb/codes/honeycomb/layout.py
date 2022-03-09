@@ -44,7 +44,7 @@ SI1000_DATA_ROTATION_SEQUENCE: Tuple[Tuple[str, str, str, str], Tuple[str, str, 
     ),
 )
 
-EM3_LIKE_GATE_SETS = ['EM3_v1', 'EM3_v2', 'EM3_v3']
+EM3_LIKE_GATE_SETS = ['EM3_v1', 'EM3_v2', 'SIEM3000']
 
 @dataclasses.dataclass
 class ComparisonRule:

@@ -102,8 +102,8 @@ class HoneycombCircuitMaker:
             return NoiseModel.EM3_v2(self.layout.noise_level)
         if self.layout.noisy_gate_set == 'EM3_v1':
             return NoiseModel.EM3_v1(self.layout.noise_level)
-        if self.layout.noisy_gate_set == 'EM3_v3':
-            return NoiseModel.EM3_v3(self.layout.noise_level)
+        if self.layout.noisy_gate_set == 'SIEM3000':
+            return NoiseModel.SIEM3000(self.layout.noise_level)
         if self.layout.noisy_gate_set == 'SD6':
             return NoiseModel.SD6(self.layout.noise_level)
         if self.layout.noisy_gate_set == 'SI1000':
