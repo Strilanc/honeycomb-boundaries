@@ -125,7 +125,8 @@ def decode_using_internal_decoder(circuit: stim.Circuit,
     num_shots = bit_packed_det_samples.shape[0]
     num_obs = circuit.num_observables
     assert bit_packed_det_samples.shape[1] == (circuit.num_detectors + 7) // 8
-    error_model = circuit.detector_error_model(decompose_errors=True)
+    error_model = circuit.detector_error_model(decompose_errors=True,
+                                               approximate_disjoint_errors=True,)
 
     with tempfile.TemporaryDirectory() as d:
         dem_file = f"{d}/model.dem"
