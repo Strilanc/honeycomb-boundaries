@@ -2872,7 +2872,7 @@ def test_exact_circuit_EM3_v3_H():
                              data_height=6,
                              rounds=100,
                              noise_level=0.125,
-                             noisy_gate_set='EM3_v2',
+                             noisy_gate_set='EM3_v3',
                              tested_observable='H',
                              sheared=True)
     assert layout.ideal_and_noisy_circuit[1] == stim.Circuit("""

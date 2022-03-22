@@ -15,7 +15,8 @@ class MppErrorType(Enum):
     NONE = 0
     DEPOLARIZING = 1
     DEPHASING = 2
-    CORRELATED = 3
+    TWO_Q_CORRELATED = 3
+    ALL_CORRELATED = 4
 
 
 @dataclasses.dataclass(frozen=True)
@@ -30,6 +31,8 @@ class NoiseModel:
 
     @staticmethod
     def dispatcher(noise_model_name: str, p: float):
+        if noise_model_name == 'EM3_v3':
+            return NoiseModel.EM3_v3(p)
         if noise_model_name == 'EM3_v2':
             return NoiseModel.EM3_v2(p)
         if noise_model_name == 'EM3_v1':
@@ -84,16 +87,34 @@ class NoiseModel:
 
     @staticmethod
     def EM3_v2(p: float) -> 'NoiseModel':
-        """EM3 with measurement flip errors correlated with measurement target depolarization error."""
+        """EM3 with measurement flip errors correlated with measurement target depolarization error for
+        two-body measurements only."""
         return NoiseModel(
             any_clifford_1=0,
             any_clifford_2=0,
             idle=p,
             measure_reset_idle=0,
-            mpp_error=MppErrorType.CORRELATED,
+            mpp_error=MppErrorType.TWO_Q_CORRELATED,
             noisy_gates={
                 "R": p/2,
                 "M": p/2,
+                "MPP": p,
+            },
+        )
+
+    @staticmethod
+    def EM3_v3(p: float) -> 'NoiseModel':
+        """EM3 with measurement flip errors correlated with measurement target depolarization error
+        for all (including single-qubit) measurements."""
+        return NoiseModel(
+            any_clifford_1=0,
+            any_clifford_2=0,
+            idle=p,
+            measure_reset_idle=0,
+            mpp_error=MppErrorType.ALL_CORRELATED,
+            noisy_gates={
+                "R": p / 2,
+                "M": p / 2,
                 "MPP": p,
             },
         )
@@ -152,7 +173,7 @@ class NoiseModel:
                 assert all(len(g) in [1, 2] for g in groups)
                 assert args == [] or args == [0]
 
-                if self.mpp_error == MppErrorType.CORRELATED:
+                if self.mpp_error in [MppErrorType.TWO_Q_CORRELATED, MppErrorType.ALL_CORRELATED]:
                     if self.mpp_indep_flip_error is not None:
                         raise ValueError("MPP independent flip errors aren't supported "
                                          "with correlated MPP errors")
@@ -166,10 +187,17 @@ class NoiseModel:
                                 mix_probability=p)
                         else:
                             assert len(g) == 1
-                            mid += parity_measurement_with_correlated_measurement_noise(
-                                t1=g[0],
-                                ancilla=ancilla,
-                                mix_probability=p)
+                            if self.mpp_error == MppErrorType.TWO_Q_CORRELATED:
+                                if g[0].is_x_target:
+                                    pre.append("Z_ERROR", g[0].value, p)
+                                else:
+                                    pre.append("X_ERROR", g[0].value, p)
+                                mid.append("MPP", g, p)
+                            else:
+                                mid += parity_measurement_with_correlated_measurement_noise(
+                                    t1=g[0],
+                                    ancilla=ancilla,
+                                    mix_probability=p)
                     return pre, mid, post
                 else:
                     first_target = groups[0][0]
