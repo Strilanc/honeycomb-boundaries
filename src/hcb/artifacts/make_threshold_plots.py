@@ -83,7 +83,7 @@ def make_threshold_plots(
     }
 
     h = max(len(e) for e in groups.values())
-    fig, axs = plt.subplots(h, len(groups) + 1)
+    fig, axs = plt.subplots(h, len(groups) + 1, squeeze=False)
     for k, (name, gs) in enumerate(groups.items()):
         for y, g in enumerate(gs):
             fill_in_threshold_plot(grouped, group=g, ax=axs[y, k], size_styles=size_styles)

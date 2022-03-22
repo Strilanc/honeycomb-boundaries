@@ -7,6 +7,7 @@ from hcb.codes.honeycomb.layout import (
     HoneycombLayout,
     comparisons_for_step,
     EDGE_MEASUREMENT_SEQUENCE, checkerboard_type, SI1000_DATA_ROTATION_SEQUENCE,
+    EM3_LIKE_GATE_SETS, STANDARD_GATE_SETS
 )
 from hcb.tools.gen.circuit_canvas import complex_key
 from hcb.tools.gen.measurement_tracker import MeasurementTracker, Prev
@@ -49,9 +50,9 @@ class HoneycombCircuitMaker:
         self.layout = layout
 
     def process(self):
-        if self.layout.noisy_gate_set.startswith('EM3'):
+        if self.layout.noisy_gate_set in EM3_LIKE_GATE_SETS:
             used_qubits = self.layout.edge_plan.data_coords_set()
-        elif self.layout.noisy_gate_set in ['SD6', 'SI1000']:
+        elif self.layout.noisy_gate_set in STANDARD_GATE_SETS:
             used_qubits = self.layout.edge_plan.used_coords_set()
         else:
             raise NotImplementedError(f'{self.layout.noisy_gate_set}')
@@ -98,15 +99,7 @@ class HoneycombCircuitMaker:
         return self._final_circuit(self.noise_model().noisy_circuit)
 
     def noise_model(self) -> NoiseModel:
-        if self.layout.noisy_gate_set == 'EM3_v2':
-            return NoiseModel.EM3_v2(self.layout.noise_level)
-        if self.layout.noisy_gate_set == 'EM3_v1':
-            return NoiseModel.EM3_v1(self.layout.noise_level)
-        if self.layout.noisy_gate_set == 'SD6':
-            return NoiseModel.SD6(self.layout.noise_level)
-        if self.layout.noisy_gate_set == 'SI1000':
-            return NoiseModel.SI1000(self.layout.noise_level)
-        raise NotImplementedError(f'{self.layout.noisy_gate_set=}')
+        return NoiseModel.dispatcher(self.layout.noisy_gate_set, self.layout.noise_level)
 
     def append_init_round_pair(self):
         if self.layout.tested_observable == 'EPR':
@@ -137,7 +130,7 @@ class HoneycombCircuitMaker:
             self.moments[1].append(f"H_{self.layout.time_boundary_data_basis}Z", data_targets)
 
     def append_round_pair(self, *, out_moments: List[stim.Circuit], loc: str):
-        if self.layout.noisy_gate_set.startswith('EM3'):
+        if self.layout.noisy_gate_set in EM3_LIKE_GATE_SETS:
             self.append_em_round_pair(out_moments=out_moments)
         elif self.layout.noisy_gate_set == 'SD6':
             self.append_sd6_round_pair(out_moments=out_moments, loc=loc)
@@ -352,7 +345,7 @@ class HoneycombCircuitMaker:
         if self.layout.noisy_gate_set == 'SD6':
             self.moments.append(stim.Circuit())
             self.moments[-1].append("M", data_targets)
-        elif self.layout.noisy_gate_set.startswith('EM'):
+        elif self.layout.noisy_gate_set in EM3_LIKE_GATE_SETS:
             if layout.time_boundary_data_basis == 'Y':
                 targ = stim.target_y
             else:
