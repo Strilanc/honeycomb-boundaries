@@ -50,10 +50,9 @@ def main():
         for k, (gate_set_caption, gate_set_suffix) in enumerate(gate_sets.items())
     ]
 
-
-    fig2, _ = make_em_plots(all_data, group)
-    fig2.set_size_inches(18, 6)
-    fig2.savefig(OUT_DIR / "em.png", bbox_inches='tight', dpi=200)
+    fig, _ = make_em_plots(all_data, group)
+    fig.set_size_inches(18, 6)
+    fig.savefig(OUT_DIR / "em.png", bbox_inches='tight', dpi=200)
 
     plt.show()
 
@@ -67,7 +66,7 @@ def make_em_plots(
     grouped = data.grouped_by(lambda e: (e.circuit_style, e.decoder))
 
     axs: List[plt.Axes]
-    fig, axs = plt.subplots(1, 3) # Lambda, Terraquops, empty for legend
+    fig, axs = plt.subplots(1, 3)  # Lambda, Terraquops, empty for legend
 
     fill_in_single_lambda_plot(grouped, group, axs[0])
     axs[0].set_ylabel("Suppression per Code Distance Step (λ)")
