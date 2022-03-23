@@ -1,11 +1,9 @@
-import math
 import pathlib
 import sys
-from typing import List, Tuple, Dict
+from typing import List
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-from scipy.stats import linregress
 
 from hcb.artifacts.make_lambda_plots import DesiredLineFit, project_intersection_of_both_observables, fill_in_single_lambda_plot
 from hcb.artifacts.make_teraquop_plots import fill_in_single_teraquop_plot
@@ -38,6 +36,7 @@ def main():
     }
     gate_set_prefix = 'bounded_honeycomb_memory'
     decoder = 'internal_correlated'
+    legend_title = "Bounded Honeycomb Memory\nInternal Correlated Decoder"
     group = [
             DesiredLineFit(
                 legend_caption=gate_set_caption,
@@ -50,7 +49,7 @@ def main():
         for k, (gate_set_caption, gate_set_suffix) in enumerate(gate_sets.items())
     ]
 
-    fig, _ = make_em_plots(all_data, group)
+    fig, _ = make_em_plots(all_data, group, legend_title=legend_title)
     fig.set_size_inches(18, 6)
     fig.savefig(OUT_DIR / "em.png", bbox_inches='tight', dpi=200)
 
@@ -59,7 +58,8 @@ def main():
 
 def make_em_plots(
         data: MultiStats,
-        group: List[DesiredLineFit]
+        group: List[DesiredLineFit],
+        legend_title=None,
 ):
 
     data = project_intersection_of_both_observables(data)
@@ -73,10 +73,14 @@ def make_em_plots(
     axs[0].yaxis.label.set_fontsize(14)
 
     fill_in_single_teraquop_plot(grouped, group, axs[1])
-    axs[1].set_ylabel("Teraquop Qubit Count")
+    axs[1].set_ylabel("Teraquop Footprint")
     axs[1].yaxis.label.set_fontsize(14)
 
-    axs[-1].legend(*axs[-2].get_legend_handles_labels(), loc="upper left")
+    axs[-1].legend(
+        *axs[-2].get_legend_handles_labels(),
+        loc="upper left",
+        title=legend_title,
+    )
     axs[-1].get_xaxis().set_ticks([])
     axs[-1].get_yaxis().set_ticks([])
     axs[-1].spines['top'].set_visible(False)
