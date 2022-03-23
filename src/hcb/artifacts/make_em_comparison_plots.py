@@ -36,7 +36,7 @@ def main():
     }
     gate_set_prefix = 'bounded_honeycomb_memory'
     decoder = 'internal_correlated'
-    legend_title = "Bounded Honeycomb Memory\nInternal Correlated Decoder"
+    legend_title = "Bounded honeycomb memory\nCorrelated MWPM decoding"
     group = [
             DesiredLineFit(
                 legend_caption=gate_set_caption,
@@ -45,13 +45,12 @@ def main():
                 filter_circuit_style=f"{gate_set_prefix}_{gate_set_suffix}",
                 filter_decoder=decoder,
                 observable="combo",
-            )
-        for k, (gate_set_caption, gate_set_suffix) in enumerate(gate_sets.items())
+            ) for k, (gate_set_caption, gate_set_suffix) in enumerate(gate_sets.items())
     ]
 
     fig, _ = make_em_plots(all_data, group, legend_title=legend_title)
     fig.set_size_inches(18, 6)
-    fig.savefig(OUT_DIR / "em.png", bbox_inches='tight', dpi=200)
+    fig.savefig(OUT_DIR / "em_comparison.png", bbox_inches='tight', dpi=200)
 
     plt.show()
 
