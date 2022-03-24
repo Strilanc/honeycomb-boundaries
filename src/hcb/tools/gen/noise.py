@@ -11,13 +11,14 @@ MEASURE_OPS = {"M", "MX", "MY"}
 ANNOTATION_OPS = {"OBSERVABLE_INCLUDE", "DETECTOR", "SHIFT_COORDS", "QUBIT_COORDS", "TICK"}
 
 STANDARD_GATE_SETS = ['SD6', 'SI1000']
-EM3_LIKE_GATE_SETS = ['EM3_v1', 'EM3_v2', 'SDEM3', 'SIEM3000']
+EM3_LIKE_GATE_SETS = ['EM3_v1', 'EM3_v2', 'EM3_v3', 'SDEM3', 'SIEM3000']
 
 class MppErrorType(Enum):
     NONE = 0
     DEPOLARIZING = 1
     DEPHASING = 2
-    CORRELATED = 3
+    TWO_Q_CORRELATED = 3
+    ALL_CORRELATED = 4
 
 
 @dataclasses.dataclass(frozen=True)
@@ -32,6 +33,8 @@ class NoiseModel:
 
     @staticmethod
     def dispatcher(noise_model_name: str, p: float):
+        if noise_model_name == 'EM3_v3':
+            return NoiseModel.EM3_v3(p)
         if noise_model_name == 'EM3_v2':
             return NoiseModel.EM3_v2(p)
         if noise_model_name == 'EM3_v1':
@@ -101,16 +104,34 @@ class NoiseModel:
 
     @staticmethod
     def EM3_v2(p: float) -> 'NoiseModel':
-        """EM3 with measurement flip errors correlated with measurement target depolarization error."""
+        """EM3 with measurement flip errors correlated with measurement target depolarization error for
+        two-body measurements only."""
         return NoiseModel(
             any_clifford_1=0,
             any_clifford_2=0,
             idle=p,
             measure_reset_idle=0,
-            mpp_error=MppErrorType.CORRELATED,
+            mpp_error=MppErrorType.TWO_Q_CORRELATED,
             noisy_gates={
                 "R": p/2,
                 "M": p/2,
+                "MPP": p,
+            },
+        )
+
+    @staticmethod
+    def EM3_v3(p: float) -> 'NoiseModel':
+        """EM3 with measurement flip errors correlated with measurement target depolarization error
+        for all (including single-qubit) measurements."""
+        return NoiseModel(
+            any_clifford_1=0,
+            any_clifford_2=0,
+            idle=p,
+            measure_reset_idle=0,
+            mpp_error=MppErrorType.ALL_CORRELATED,
+            noisy_gates={
+                "R": p / 2,
+                "M": p / 2,
                 "MPP": p,
             },
         )
@@ -129,8 +150,8 @@ class NoiseModel:
             mpp_error=MppErrorType.DEPOLARIZING,
             mpp_indep_flip_error=0,
             noisy_gates={
-                "R": p/2,
-                "M": p/2,
+                "R": p / 2,
+                "M": p / 2,
                 "MPP": p,
             },
         )
@@ -176,7 +197,7 @@ class NoiseModel:
                 assert all(len(g) in [1, 2] for g in groups)
                 assert args == [] or args == [0]
 
-                if self.mpp_error == MppErrorType.CORRELATED:
+                if self.mpp_error in [MppErrorType.TWO_Q_CORRELATED, MppErrorType.ALL_CORRELATED]:
                     if self.mpp_indep_flip_error is not None:
                         raise ValueError("MPP independent flip errors aren't supported "
                                          "with correlated MPP errors")
@@ -190,11 +211,17 @@ class NoiseModel:
                                 mix_probability=p)
                         else:
                             assert len(g) == 1
-                            if g[0].is_x_target:
-                                pre.append("Z_ERROR", g[0].value, p)
+                            if self.mpp_error == MppErrorType.TWO_Q_CORRELATED:
+                                if g[0].is_x_target:
+                                    pre.append("Z_ERROR", g[0].value, p)
+                                else:
+                                    pre.append("X_ERROR", g[0].value, p)
+                                mid.append("MPP", g, p)
                             else:
-                                pre.append("X_ERROR", g[0].value, p)
-                            mid.append("MPP", g, p)
+                                mid += parity_measurement_with_correlated_measurement_noise(
+                                    t1=g[0],
+                                    ancilla=ancilla,
+                                    mix_probability=p)
                     return pre, mid, post
                 else:
                     first_target = groups[0][0]
@@ -349,7 +376,7 @@ def mix_probability_to_independent_component_probability(mix_probability: float,
 def parity_measurement_with_correlated_measurement_noise(
         *,
         t1: stim.GateTarget,
-        t2: stim.GateTarget,
+        t2: stim.GateTarget = None,
         ancilla: int,
         mix_probability: float) -> stim.Circuit:
     """Performs a noisy parity measurement.
@@ -358,11 +385,21 @@ def parity_measurement_with_correlated_measurement_noise(
 
         {I1,X1,Y1,Z1}*{I2,X2,Y2,Z2}*{no flip, flip}
 
+    in the case of a pairwise measurement and
+
+        {I1,X1,Y1,Z1}*{no flip, flip}
+
+    in the case of a single qubit measurement.
+
     Note that, unlike in other places in the code, the all-identity term is one of the possible
     samples when the error occurs.
     """
 
-    ind_p = mix_probability_to_independent_component_probability(mix_probability, 5)
+    num_coins = 3
+    if t2 is not None:
+        num_coins = 5
+
+    ind_p = mix_probability_to_independent_component_probability(mix_probability, num_coins)
 
     # Generate all possible combinations of (non-identity) channels.  Assumes triple of targets
     # with last element corresponding to measure qubit.
@@ -374,15 +411,18 @@ def parity_measurement_with_correlated_measurement_noise(
         circuit.append('YCX', [t1.value, ancilla])
     if t1.is_z_target:
         circuit.append('ZCX', [t1.value, ancilla])
-    if t2.is_x_target:
-        circuit.append('XCX', [t2.value, ancilla])
-    if t2.is_y_target:
-        circuit.append('YCX', [t2.value, ancilla])
-    if t2.is_z_target:
-        circuit.append('ZCX', [t2.value, ancilla])
+    if t2 is not None:
+        if t2.is_x_target:
+            circuit.append('XCX', [t2.value, ancilla])
+        if t2.is_y_target:
+            circuit.append('YCX', [t2.value, ancilla])
+        if t2.is_z_target:
+            circuit.append('ZCX', [t2.value, ancilla])
 
     first_targets = ["I", stim.target_x(t1.value), stim.target_y(t1.value), stim.target_z(t1.value)]
-    second_targets = ["I", stim.target_x(t2.value), stim.target_y(t2.value), stim.target_z(t2.value)]
+    second_targets = ["I"]
+    if t2 is not None:
+        second_targets = ["I", stim.target_x(t2.value), stim.target_y(t2.value), stim.target_z(t2.value)]
     measure_targets = ["I", stim.target_x(ancilla)]
 
     errors = []
