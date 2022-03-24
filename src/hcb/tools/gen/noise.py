@@ -33,12 +33,12 @@ class NoiseModel:
 
     @staticmethod
     def dispatcher(noise_model_name: str, p: float):
-        if noise_model_name == 'EM3_v3':
-            return NoiseModel.EM3_v3(p)
-        if noise_model_name == 'EM3_v2':
-            return NoiseModel.EM3_v2(p)
         if noise_model_name == 'EM3_v1':
             return NoiseModel.EM3_v1(p)
+        if noise_model_name == 'EM3_v2':
+            return NoiseModel.EM3_v2(p)
+        if noise_model_name == 'EM3_v3':
+            return NoiseModel.EM3_v3(p)
         if noise_model_name == 'SDEM3':
             return NoiseModel.SDEM3(p)
         if noise_model_name == 'SIEM3000':

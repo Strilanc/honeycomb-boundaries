@@ -254,6 +254,7 @@ def test_exact_circuit_EM3_v1_H():
         TICK
     """)
 
+
 def test_exact_circuit_EM3_v2_H():
     layout = HoneycombLayout(data_width=2,
                              data_height=6,
@@ -2866,6 +2867,7 @@ def test_exact_circuit_EM3_v2_H():
         OBSERVABLE_INCLUDE(1) rec[-4] rec[-3] rec[-2] rec[-1]
         TICK
     """)
+
 
 def test_exact_circuit_EM3_v3_H():
     layout = HoneycombLayout(data_width=2,
@@ -6261,6 +6263,369 @@ def test_exact_circuit_EM3_v3_H():
         E(0.0164159) Z11
         E(0.0164159) Z11 X22
         M 22
+        DETECTOR(0, 0.5, 0) rec[-22] rec[-12]
+        DETECTOR(1, 0.5, 0) rec[-21] rec[-11] rec[-10]
+        DETECTOR(1, 3.5, 0) rec[-20] rec[-8]
+        DETECTOR(2, 0.5, 0) rec[-19] rec[-7]
+        DETECTOR(2, 3.5, 0) rec[-18] rec[-5] rec[-4]
+        DETECTOR(3, 3.5, 0) rec[-17] rec[-2]
+        DETECTOR(0.5, 2, 0) rec[-16] rec[-9]
+        DETECTOR(1.5, 5, 0) rec[-15] rec[-3]
+        DETECTOR(2.5, 2, 0) rec[-14] rec[-6]
+        DETECTOR(3.5, 5, 0) rec[-13] rec[-1]
+        DETECTOR(1.5, 2, 0) rec[-36] rec[-35] rec[-31] rec[-28] rec[-27] rec[-24] rec[-10] rec[-9] rec[-8] rec[-7] rec[-6] rec[-5]
+        OBSERVABLE_INCLUDE(1) rec[-4] rec[-3] rec[-2] rec[-1]
+        TICK
+    """)
+
+
+def test_exact_circuit_SDEM3_H():
+    layout = HoneycombLayout(data_width=2,
+                             data_height=6,
+                             rounds=100,
+                             noise_level=0.125,
+                             noisy_gate_set='SDEM3',
+                             tested_observable='H',
+                             sheared=True)
+    assert layout.ideal_and_noisy_circuit[1] == stim.Circuit("""
+        QUBIT_COORDS(0, 0) 0
+        QUBIT_COORDS(1, 0) 1
+        QUBIT_COORDS(1, 1) 2
+        QUBIT_COORDS(1, 2) 3
+        QUBIT_COORDS(1, 3) 4
+        QUBIT_COORDS(2, 1) 5
+        QUBIT_COORDS(2, 2) 6
+        QUBIT_COORDS(2, 3) 7
+        QUBIT_COORDS(2, 4) 8
+        QUBIT_COORDS(2, 5) 9
+        QUBIT_COORDS(3, 4) 10
+        QUBIT_COORDS(3, 5) 11
+        R 0 1 2 3 4 5 6 7 8 9 10 11
+        X_ERROR(0.0625) 0 1 2 3 4 5 6 7 8 9 10 11
+        TICK
+        H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
+        TICK
+        DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
+        MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
+        DEPOLARIZE2(0.125) 2 1 8 7
+        MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        DETECTOR(1.5, 4, 0) rec[-8] rec[-6] rec[-3]
+        DETECTOR(2.5, 1, 0) rec[-7] rec[-2]
+        DETECTOR(0.5, 1, 0) rec[-10] rec[-9] rec[-4]
+        DETECTOR(3.5, 4, 0) rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 1 9 11
+        DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
+        MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+        OBSERVABLE_INCLUDE(1) rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
+        MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+        DETECTOR(1.5, 2, 0) rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 1 9 11
+        DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
+        MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+        OBSERVABLE_INCLUDE(1) rec[-1]
+        DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
+        DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
+        DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
+        DEPOLARIZE2(0.125) 2 1 8 7
+        MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
+        DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        REPEAT 48 {
+            DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
+            MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
+            DEPOLARIZE2(0.125) 2 1 8 7
+            MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+            OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+            DETECTOR(1.5, 4, 0) rec[-24] rec[-22] rec[-19] rec[-8] rec[-6] rec[-3]
+            DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
+            DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
+            DETECTOR(3.5, 4, 0) rec[-21] rec[-17] rec[-5] rec[-1]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            DEPOLARIZE1(0.125) 0 1 9 11
+            DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
+            MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+            OBSERVABLE_INCLUDE(1) rec[-1]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
+            MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+            DETECTOR(1.5, 2, 0) rec[-54] rec[-53] rec[-49] rec[-46] rec[-45] rec[-42] rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            DEPOLARIZE1(0.125) 0 1 9 11
+            DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
+            MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+            OBSERVABLE_INCLUDE(1) rec[-1]
+            DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
+            DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
+            DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
+            DEPOLARIZE2(0.125) 2 1 8 7
+            MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+            OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+            DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
+            DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+        }
+        DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
+        MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
+        DEPOLARIZE2(0.125) 2 1 8 7
+        MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        DETECTOR(1.5, 4, 0) rec[-24] rec[-22] rec[-19] rec[-8] rec[-6] rec[-3]
+        DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
+        DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
+        DETECTOR(3.5, 4, 0) rec[-21] rec[-17] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 1 9 11
+        DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
+        MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+        OBSERVABLE_INCLUDE(1) rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE2(0.125) 2 3 6 5 8 9 11 10 0 1 4 7
+        MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+        DETECTOR(1.5, 2, 0) rec[-54] rec[-53] rec[-49] rec[-46] rec[-45] rec[-42] rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 1 9 11
+        DEPOLARIZE2(0.125) 4 3 6 7 2 5 8 10
+        MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+        OBSERVABLE_INCLUDE(1) rec[-1]
+        DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
+        DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
+        DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 4 5 10 3 9 6 11
+        DEPOLARIZE2(0.125) 2 1 8 7
+        MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
+        DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        DEPOLARIZE1(0.125) 0 1 2 3 4 5 6 7 8 9 10 11
+        MPP(0.125) Y0 Y1 Y2 Y3 Y4 Y5 Y6 Y7 Y8 Y9 Y10 Y11
+        DETECTOR(0, 0.5, 0) rec[-22] rec[-12]
+        DETECTOR(1, 0.5, 0) rec[-21] rec[-11] rec[-10]
+        DETECTOR(1, 3.5, 0) rec[-20] rec[-8]
+        DETECTOR(2, 0.5, 0) rec[-19] rec[-7]
+        DETECTOR(2, 3.5, 0) rec[-18] rec[-5] rec[-4]
+        DETECTOR(3, 3.5, 0) rec[-17] rec[-2]
+        DETECTOR(0.5, 2, 0) rec[-16] rec[-9]
+        DETECTOR(1.5, 5, 0) rec[-15] rec[-3]
+        DETECTOR(2.5, 2, 0) rec[-14] rec[-6]
+        DETECTOR(3.5, 5, 0) rec[-13] rec[-1]
+        DETECTOR(1.5, 2, 0) rec[-36] rec[-35] rec[-31] rec[-28] rec[-27] rec[-24] rec[-10] rec[-9] rec[-8] rec[-7] rec[-6] rec[-5]
+        OBSERVABLE_INCLUDE(1) rec[-4] rec[-3] rec[-2] rec[-1]
+        TICK
+    """)
+
+
+def test_exact_circuit_SIEM3000_H():
+    layout = HoneycombLayout(data_width=2,
+                             data_height=6,
+                             rounds=100,
+                             noise_level=0.125,
+                             noisy_gate_set='SIEM3000',
+                             tested_observable='H',
+                             sheared=True)
+    assert layout.ideal_and_noisy_circuit[1] == stim.Circuit("""
+        QUBIT_COORDS(0, 0) 0
+        QUBIT_COORDS(1, 0) 1
+        QUBIT_COORDS(1, 1) 2
+        QUBIT_COORDS(1, 2) 3
+        QUBIT_COORDS(1, 3) 4
+        QUBIT_COORDS(2, 1) 5
+        QUBIT_COORDS(2, 2) 6
+        QUBIT_COORDS(2, 3) 7
+        QUBIT_COORDS(2, 4) 8
+        QUBIT_COORDS(2, 5) 9
+        QUBIT_COORDS(3, 4) 10
+        QUBIT_COORDS(3, 5) 11
+        R 0 1 2 3 4 5 6 7 8 9 10 11
+        X_ERROR(0.0625) 0 1 2 3 4 5 6 7 8 9 10 11
+        TICK
+        H_YZ 0 1 2 3 4 5 6 7 8 9 10 11
+        TICK
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0.125, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+        PAULI_CHANNEL_1(0, 0.125, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+        MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0.125, 0) 0 4 5 10 3 9 6 11
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0.125, 0, 1e-15, 0, 0, 0) 2 1 8 7
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 4 5 10 3 9 6 11 2 1 8 7
+        MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        DETECTOR(1.5, 4, 0) rec[-8] rec[-6] rec[-3]
+        DETECTOR(2.5, 1, 0) rec[-7] rec[-2]
+        DETECTOR(0.5, 1, 0) rec[-10] rec[-9] rec[-4]
+        DETECTOR(3.5, 4, 0) rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 1 9 11
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0.125) 4 3 6 7 2 5 8 10
+        PAULI_CHANNEL_1(0.125, 0, 0) 0 1 9 11 4 3 6 7 2 5 8 10
+        MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+        OBSERVABLE_INCLUDE(1) rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0.125, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+        PAULI_CHANNEL_1(0, 0.125, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+        MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+        DETECTOR(1.5, 2, 0) rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 1 9 11
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0.125) 4 3 6 7 2 5 8 10
+        PAULI_CHANNEL_1(0.125, 0, 0) 0 1 9 11 4 3 6 7 2 5 8 10
+        MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+        OBSERVABLE_INCLUDE(1) rec[-1]
+        DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
+        DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
+        DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0.125, 0) 0 4 5 10 3 9 6 11
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0.125, 0, 1e-15, 0, 0, 0) 2 1 8 7
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 4 5 10 3 9 6 11 2 1 8 7
+        MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
+        DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        REPEAT 48 {
+            PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0.125, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+            PAULI_CHANNEL_1(0, 0.125, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+            MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            PAULI_CHANNEL_1(0, 0.125, 0) 0 4 5 10 3 9 6 11
+            PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0.125, 0, 1e-15, 0, 0, 0) 2 1 8 7
+            PAULI_CHANNEL_1(0, 0, 0.125) 0 4 5 10 3 9 6 11 2 1 8 7
+            MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+            OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+            DETECTOR(1.5, 4, 0) rec[-24] rec[-22] rec[-19] rec[-8] rec[-6] rec[-3]
+            DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
+            DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
+            DETECTOR(3.5, 4, 0) rec[-21] rec[-17] rec[-5] rec[-1]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            PAULI_CHANNEL_1(0, 0, 0.125) 0 1 9 11
+            PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0.125) 4 3 6 7 2 5 8 10
+            PAULI_CHANNEL_1(0.125, 0, 0) 0 1 9 11 4 3 6 7 2 5 8 10
+            MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+            OBSERVABLE_INCLUDE(1) rec[-1]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0.125, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+            PAULI_CHANNEL_1(0, 0.125, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+            MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+            DETECTOR(1.5, 2, 0) rec[-54] rec[-53] rec[-49] rec[-46] rec[-45] rec[-42] rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            PAULI_CHANNEL_1(0, 0, 0.125) 0 1 9 11
+            PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0.125) 4 3 6 7 2 5 8 10
+            PAULI_CHANNEL_1(0.125, 0, 0) 0 1 9 11 4 3 6 7 2 5 8 10
+            MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+            OBSERVABLE_INCLUDE(1) rec[-1]
+            DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
+            DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
+            DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+            PAULI_CHANNEL_1(0, 0.125, 0) 0 4 5 10 3 9 6 11
+            PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0.125, 0, 1e-15, 0, 0, 0) 2 1 8 7
+            PAULI_CHANNEL_1(0, 0, 0.125) 0 4 5 10 3 9 6 11 2 1 8 7
+            MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+            OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+            DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
+            DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+            SHIFT_COORDS(0, 0, 1)
+            TICK
+        }
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0.125, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+        PAULI_CHANNEL_1(0, 0.125, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+        MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0.125, 0) 0 4 5 10 3 9 6 11
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0.125, 0, 1e-15, 0, 0, 0) 2 1 8 7
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 4 5 10 3 9 6 11 2 1 8 7
+        MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        DETECTOR(1.5, 4, 0) rec[-24] rec[-22] rec[-19] rec[-8] rec[-6] rec[-3]
+        DETECTOR(2.5, 1, 0) rec[-23] rec[-18] rec[-7] rec[-2]
+        DETECTOR(0.5, 1, 0) rec[-26] rec[-25] rec[-20] rec[-10] rec[-9] rec[-4]
+        DETECTOR(3.5, 4, 0) rec[-21] rec[-17] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 1 9 11
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0.125) 4 3 6 7 2 5 8 10
+        PAULI_CHANNEL_1(0.125, 0, 0) 0 1 9 11 4 3 6 7 2 5 8 10
+        MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+        OBSERVABLE_INCLUDE(1) rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0.125, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+        PAULI_CHANNEL_1(0, 0.125, 0) 2 3 6 5 8 9 11 10 0 1 4 7
+        MPP(0.125) X2*X3 X6*X5 X8*X9 X11*X10 X0*X1 X4*X7
+        DETECTOR(1.5, 2, 0) rec[-54] rec[-53] rec[-49] rec[-46] rec[-45] rec[-42] rec[-12] rec[-11] rec[-8] rec[-6] rec[-5] rec[-1]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 1 9 11
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0, 1e-15, 0, 0, 0.125) 4 3 6 7 2 5 8 10
+        PAULI_CHANNEL_1(0.125, 0, 0) 0 1 9 11 4 3 6 7 2 5 8 10
+        MPP(0.125) Z0 Z1 Z4*Z3 Z6*Z7 Z9 Z11 Z2*Z5 Z8*Z10
+        OBSERVABLE_INCLUDE(1) rec[-1]
+        DETECTOR(1.5, 2, 0) rec[-20] rec[-19] rec[-16] rec[-6] rec[-5] rec[-2]
+        DETECTOR(2.5, 5, 0) rec[-18] rec[-17] rec[-15] rec[-4] rec[-3] rec[-1]
+        DETECTOR(0.5, -1, 0) rec[-22] rec[-21] rec[-8] rec[-7]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0.125, 0) 0 4 5 10 3 9 6 11
+        PAULI_CHANNEL_2(1e-15, 1e-15, 1e-15, 1e-15, 0, 0, 0, 1e-15, 0, 0.125, 0, 1e-15, 0, 0, 0) 2 1 8 7
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 4 5 10 3 9 6 11 2 1 8 7
+        MPP(0.125) Y0 Y2*Y1 Y4 Y5 Y8*Y7 Y10 Y3 Y9 Y6 Y11
+        OBSERVABLE_INCLUDE(1) rec[-3] rec[-1]
+        DETECTOR(0.5, 3, 0) rec[-40] rec[-36] rec[-30] rec[-16] rec[-8] rec[-4]
+        DETECTOR(2.5, 3, 0) rec[-38] rec[-37] rec[-34] rec[-29] rec[-25] rec[-15] rec[-11] rec[-6] rec[-5] rec[-2]
+        SHIFT_COORDS(0, 0, 1)
+        TICK
+        PAULI_CHANNEL_1(0, 0.125, 0) 0 1 2 3 4 5 6 7 8 9 10 11
+        PAULI_CHANNEL_1(0, 0, 0.125) 0 1 2 3 4 5 6 7 8 9 10 11
+        MPP(0.125) Y0 Y1 Y2 Y3 Y4 Y5 Y6 Y7 Y8 Y9 Y10 Y11
         DETECTOR(0, 0.5, 0) rec[-22] rec[-12]
         DETECTOR(1, 0.5, 0) rec[-21] rec[-11] rec[-10]
         DETECTOR(1, 3.5, 0) rec[-20] rec[-8]
