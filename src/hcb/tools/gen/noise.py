@@ -10,6 +10,8 @@ RESET_OPS = {"R", "RX", "RY"}
 MEASURE_OPS = {"M", "MX", "MY"}
 ANNOTATION_OPS = {"OBSERVABLE_INCLUDE", "DETECTOR", "SHIFT_COORDS", "QUBIT_COORDS", "TICK"}
 
+STANDARD_GATE_SETS = ['SD6', 'SI1000']
+EM3_LIKE_GATE_SETS = ['EM3_v1', 'EM3_v2', 'EM3_v3', 'SDEM3', 'SIEM3000']
 
 class MppErrorType(Enum):
     NONE = 0
@@ -31,12 +33,14 @@ class NoiseModel:
 
     @staticmethod
     def dispatcher(noise_model_name: str, p: float):
-        if noise_model_name == 'EM3_v3':
-            return NoiseModel.EM3_v3(p)
-        if noise_model_name == 'EM3_v2':
-            return NoiseModel.EM3_v2(p)
         if noise_model_name == 'EM3_v1':
             return NoiseModel.EM3_v1(p)
+        if noise_model_name == 'EM3_v2':
+            return NoiseModel.EM3_v2(p)
+        if noise_model_name == 'EM3_v3':
+            return NoiseModel.EM3_v3(p)
+        if noise_model_name == 'SDEM3':
+            return NoiseModel.SDEM3(p)
         if noise_model_name == 'SIEM3000':
             return NoiseModel.SIEM3000(p)
         if noise_model_name == 'SD6':
@@ -68,6 +72,19 @@ class NoiseModel:
             noisy_gates={
                 "R": p,
                 "M": p,
+            },
+        )
+
+    @staticmethod
+    def SI1000(p: float) -> 'NoiseModel':
+        return NoiseModel(
+            any_clifford_1=p / 10,
+            idle=p / 10,
+            measure_reset_idle=2 * p,
+            noisy_gates={
+                "CZ": p,
+                "R": 2 * p,
+                "M": 5 * p,
             },
         )
 
@@ -120,10 +137,30 @@ class NoiseModel:
         )
 
     @staticmethod
+    def SDEM3(p: float) -> 'NoiseModel':
+        """EM3 with uncorrelated measurement flip errors and 2Q depolarizing errors
+
+        ~Extremely~ similar to EM3_v1, but noisy gates to exactly match
+        EM3_v3 and SIEM3000 for slightly more direct comparisons"""
+        return NoiseModel(
+            any_clifford_1=0,
+            any_clifford_2=0,
+            idle=p,
+            measure_reset_idle=0,
+            mpp_error=MppErrorType.DEPOLARIZING,
+            mpp_indep_flip_error=0,
+            noisy_gates={
+                "R": p / 2,
+                "M": p / 2,
+                "MPP": p,
+            },
+        )
+
+    @staticmethod
     def SIEM3000(p: float) -> 'NoiseModel':
         """Superconducting inspired entangling measurements
 
-       Like EM3, but with correlated dephasing and independent bitflips
+        Like EM3, but with correlated dephasing and independent bitflips
         on MPP operations, rather than depolarizing"""
         return NoiseModel(
             any_clifford_1=0,
@@ -136,19 +173,6 @@ class NoiseModel:
                 "R": p/2,
                 "M": p/2,
                 "MPP": p,
-            },
-        )
-
-    @staticmethod
-    def SI1000(p: float) -> 'NoiseModel':
-        return NoiseModel(
-            any_clifford_1=p / 10,
-            idle=p / 10,
-            measure_reset_idle=2 * p,
-            noisy_gates={
-                "CZ": p,
-                "R": 2 * p,
-                "M": 5 * p,
             },
         )
 

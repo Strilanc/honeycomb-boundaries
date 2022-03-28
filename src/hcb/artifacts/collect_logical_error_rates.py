@@ -23,6 +23,7 @@ from typing import Iterator, List, Sequence
 
 from hcb.codes.honeycomb.layout import HoneycombLayout
 from hcb.tools.analysis.collecting import collect_simulated_experiment_data, DecodingProblem
+from hcb.tools.gen.noise import EM3_LIKE_GATE_SETS, STANDARD_GATE_SETS
 
 
 def iter_problems(*,
@@ -99,7 +100,7 @@ def main():
                         required=True,
                         help='Which observable to intialize and protect and measure.')
     parser.add_argument('-case_gate_sets',
-                        choices=['SD6', 'SI1000', 'EM3_v1', 'EM3_v2', 'SIEM3000'],
+                        choices=STANDARD_GATE_SETS + EM3_LIKE_GATE_SETS,
                         nargs='+',
                         required=True,
                         help='Noisy gate sets to sample.')

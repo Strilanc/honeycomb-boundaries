@@ -7,11 +7,10 @@ from hcb.codes.honeycomb.layout import (
     HoneycombLayout,
     comparisons_for_step,
     EDGE_MEASUREMENT_SEQUENCE, checkerboard_type, SI1000_DATA_ROTATION_SEQUENCE,
-    EM3_LIKE_GATE_SETS, STANDARD_GATE_SETS
 )
 from hcb.tools.gen.circuit_canvas import complex_key
 from hcb.tools.gen.measurement_tracker import MeasurementTracker, Prev
-from hcb.tools.gen.noise import NoiseModel
+from hcb.tools.gen.noise import NoiseModel, EM3_LIKE_GATE_SETS, STANDARD_GATE_SETS
 from hcb.tools.gen.stabilizer_plan import StabilizerPlan, StabilizerPlanElement
 from hcb.tools.gen.viewer import stim_circuit_html_viewer
 

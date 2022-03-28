@@ -79,7 +79,7 @@ def make_teraquop_plots(
         axs[k].set_title(name)
     for k in range(1, len(groups)):
         axs[k].set_yticklabels([])
-    axs[0].set_ylabel("Teraquop Qubit Count")
+    axs[0].set_ylabel("Teraquop Footprint")
     axs[0].yaxis.label.set_fontsize(14)
 
     axs[-1].legend(*axs[-2].get_legend_handles_labels(), loc="upper left")

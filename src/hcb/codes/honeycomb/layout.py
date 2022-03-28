@@ -10,6 +10,7 @@ from hcb.tools.analysis.collecting import DecodingProblem, DecodingProblemDesc
 from hcb.tools.gen.circuit_canvas import complex_key
 from hcb.tools.gen.measurement_tracker import MeasurementTracker, Prev
 from hcb.tools.gen.stabilizer_plan import StabilizerPlan, StabilizerPlanElement
+from hcb.tools.gen.noise import STANDARD_GATE_SETS, EM3_LIKE_GATE_SETS
 
 HEX_DATA_OFFSETS = (
     0,
@@ -43,9 +44,6 @@ SI1000_DATA_ROTATION_SEQUENCE: Tuple[Tuple[str, str, str, str], Tuple[str, str, 
         'C_ZYX',
     ),
 )
-
-STANDARD_GATE_SETS = ['SD6', 'SI1000']
-EM3_LIKE_GATE_SETS = ['EM3_v1', 'EM3_v2', 'EM3_v3', 'SIEM3000']
 
 @dataclasses.dataclass
 class ComparisonRule:
