@@ -14,7 +14,7 @@ COLORS = list(mcolors.TABLEAU_COLORS) * 3
 def main():
     gate_sets = {
         'SD6 or SI1000': 'SD6',
-        'EM3': 'EM3_v2',
+        'EM3': 'EM3_v3',
     }
     ax: plt.Axes
     fig: plt.Figure

@@ -34,7 +34,7 @@ def main():
     gate_sets = {
         'SD6': 'SD6',
         'SI1000': 'SI1000',
-        'EM3': 'EM3_v2',
+        'EM3': 'EM3_v3',
     }
     layouts = {
         'periodic honeycomb code\n(correlated MWPM)': ('honeycomb', 'internal_correlated'),
