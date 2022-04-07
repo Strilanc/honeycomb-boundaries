@@ -30,7 +30,7 @@ def main():
     all_data = MultiStats.from_recorded_data(*csvs).filter(lambda e: 'PC3' not in e.circuit_style)
 
     gate_sets = {
-        'EM3': 'EM3_v2',
+        'EM3': 'EM3_v3',
         'SDEM3': 'SDEM3',
         'SIEM3000': 'SIEM3000',
     }
