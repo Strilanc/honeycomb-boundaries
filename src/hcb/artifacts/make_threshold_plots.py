@@ -40,7 +40,7 @@ def main():
     gate_sets = {
         'SD6': 'SD6',
         'SI1000': 'SI1000',
-        'EM3': 'EM3_v2',
+        'EM3': 'EM3_v3',
     }
     layouts = {
         (f'planar honeycomb code\n({best_decoder_name})', 'bounded_honeycomb_memory', best_decoder, 'combo'),

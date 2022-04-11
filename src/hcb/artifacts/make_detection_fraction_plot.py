@@ -37,23 +37,26 @@ def plot_detection_fraction(all_data: MultiStats) -> plt.Figure:
         "honeycomb_EM3_v2": ("EM3", "Periodic Honeycomb Code"),
         'bounded_honeycomb_memory_SD6': ("SD6", "Planar Honeycomb Code"),
         'bounded_honeycomb_memory_SI1000': ("SI1000", "Planar Honeycomb Code"),
-        "bounded_honeycomb_memory_EM3_v2": ("EM3", "Planar Honeycomb Code"),
+        "bounded_honeycomb_memory_EM3_v3": ("EM3", "Planar Honeycomb Code"),
     }
     known_styles = {
         "surface_SD6",
         "surface_SI1000",
         "honeycomb_SD6",
-        "bounded_honeycomb_memory_EM3_v1",
         "honeycomb_SI1000",
+        'honeycomb_EM3',
         "honeycomb_EM3_v2",
+        "honeycomb_EM3_v3",
+        "bounded_honeycomb_memory_EM3_v1",
         'bounded_honeycomb_memory_EM3_v2',
+        'bounded_honeycomb_memory_EM3_v3',
+        'bounded_honeycomb_memory_SD6',
         'bounded_honeycomb_memory_SI1000',
         'bounded_honeycomb_memory_sheared_EM3_v1',
         'bounded_honeycomb_memory_sheared_EM3_v2',
+        'bounded_honeycomb_memory_sheared_EM3_v3',
         'bounded_honeycomb_memory_sheared_SD6',
         'bounded_honeycomb_memory_sheared_SI1000',
-        'honeycomb_EM3',
-        'bounded_honeycomb_memory_SD6',
     }
 
     p2i = {p: i for i, p in enumerate(sorted(set(e.noise for e in all_data.data.keys())))}
