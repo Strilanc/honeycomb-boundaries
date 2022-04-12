@@ -31,11 +31,10 @@ def main():
     decoders = {e.decoder for e in all_data.data.keys()}
     if 'internal_correlated' in decoders:
         best_decoder = 'internal_correlated'
-        best_decoder_name = '(correlated MWPM)'
+        best_decoder_name = 'correlated MWPM'
     else:
         best_decoder = sorted(decoders)[0]
         best_decoder_name = best_decoder
-
 
     gate_sets = {
         'SD6': 'SD6',
