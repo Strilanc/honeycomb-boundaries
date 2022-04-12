@@ -170,7 +170,7 @@ def extrapolate_num_qubits(*,
             tested_observable='H',
             sheared=False
         ).num_used_qubits()
-    elif basis.circuit_style in ["honeycomb_EM3_v2", "honeycomb_EM3"]:
+    elif basis.circuit_style in ["honeycomb_EM3_v2", "honeycomb_EM3_v3", "honeycomb_EM3"]:
         d = math.ceil(new_code_distance / 4)
         return d * d * 24
     elif basis.circuit_style in ["honeycomb_SD6", "honeycomb_SI1000"]:
